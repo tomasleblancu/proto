@@ -1,34 +1,26 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import { useMountEffect } from '@/hooks/useMountEffect'
 import { ResponsiveGridLayout, type Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import { XIcon, ShoppingCartIcon } from 'lucide-react'
-import OrdersWidget from './widgets/OrdersWidget'
-import ProductsWidget from './widgets/ProductsWidget'
 import CreateOrderDialog from './widgets/CreateOrderDialog'
 import CreateProductDialog from './widgets/CreateProductDialog'
 import CartModal from './widgets/CartModal'
 import SettingsModal from './widgets/SettingsModal'
-import DocsWidget from './widgets/DocsWidget'
-import ReordersWidget from './widgets/ReordersWidget'
-import OrderDetailWidget from './widgets/OrderDetailWidget'
-import AdminWidget from './widgets/AdminWidget'
-import SettingsWidget from './widgets/SettingsWidget'
-import InventoryWidget from './widgets/InventoryWidget'
-import SchedulesWidget from './widgets/SchedulesWidget'
-import { OrderHeaderWidget, OrderSupplierWidget, OrderTimelineWidget, OrderDocsWidget, OrderContactsWidget, OrderFindingsWidget, OrderCostingWidget } from './widgets/cockpit/order'
-import { ProductHeaderWidget, ProductSuppliersWidget, ProductOrdersWidget } from './widgets/cockpit/product'
 import {
-  DEFAULT_SIZES, DEFAULT_WIDGETS, DEFAULT_LAYOUTS,
+  DEFAULT_WIDGETS, DEFAULT_LAYOUTS,
   ORDER_COCKPIT_WIDGETS, ORDER_COCKPIT_LAYOUTS,
   PRODUCT_COCKPIT_WIDGETS, PRODUCT_COCKPIT_LAYOUTS,
-  WIDGET_CATALOG,
 } from './shell/catalog'
+import { WIDGETS } from './shell/widgets-registry'
+import { buildWidgetRegistry, type ShellContext } from '@/lib/define-widget'
 import { loadShellState, saveShellState, clearShellState } from './shell/persistence'
 import { Toolbar } from './shell/Toolbar'
 import { FocusView } from './shell/FocusView'
 import { EmptyState } from './shell/EmptyState'
 import type { ActiveEntity, CartItem, WidgetInstance, WidgetType } from './shell/types'
+
+const WIDGET_REGISTRY = buildWidgetRegistry(WIDGETS)
 
 export type { WidgetType, ActiveEntity } from './shell/types'
 
@@ -143,11 +135,11 @@ export default function Shell({
 
   const addWidget = useCallback((type: WidgetType) => {
     const id = `${type}-${Date.now()}`
-    const catalog = WIDGET_CATALOG.find(w => w.type === type)
-    const size = DEFAULT_SIZES[type]
+    const def = WIDGET_REGISTRY.get(type)
+    const size = def?.defaultSize || { w: 3, h: 4, minW: 2, minH: 3 }
 
     setWidgets(prev => {
-      const next = [...prev, { id, type, title: catalog?.title || type }]
+      const next = [...prev, { id, type, title: def?.title || type }]
       setLayouts((prevLayouts: any) => {
         const nextLayouts = { ...prevLayouts, lg: [...(prevLayouts.lg || []), { i: id, x: 0, y: Infinity, ...size }] }
         saveShellState(next, nextLayouts)
@@ -180,68 +172,31 @@ export default function Shell({
     saveShellState(widgets, allLayouts)
   }
 
+  const triggerLocalRefresh = useCallback(() => setLocalRefresh(k => k + 1), [])
+
+  const shellCtx = useMemo<ShellContext>(() => ({
+    companyId,
+    refreshKey: effectiveRefreshKey,
+    activeEntity: activeEntity || null,
+    onSendToChat,
+    onActivateEntity,
+    onDeactivateEntity,
+    onCloseTab,
+    cartItems,
+    addToCart,
+    openCreateOrder,
+    openCreateProduct: () => setCreateProductOpen(true),
+    triggerLocalRefresh,
+  }), [
+    companyId, effectiveRefreshKey, activeEntity,
+    onSendToChat, onActivateEntity, onDeactivateEntity, onCloseTab,
+    cartItems, addToCart, openCreateOrder, triggerLocalRefresh,
+  ])
+
   function renderWidget(widget: WidgetInstance) {
-    switch (widget.type) {
-      case 'orders':
-        return <OrdersWidget
-          companyId={companyId}
-          refreshKey={effectiveRefreshKey}
-          onSelectOrder={(id, label) => onActivateEntity?.({ type: 'order', id, label })}
-          onSendToChat={onSendToChat}
-          onCreateOrder={() => openCreateOrder()}
-        />
-      case 'products':
-        return <ProductsWidget
-          companyId={companyId}
-          refreshKey={effectiveRefreshKey}
-          onSelectProduct={(id, label) => onActivateEntity?.({ type: 'product', id, label })}
-          onAddToCart={addToCart}
-          onCreateProduct={() => setCreateProductOpen(true)}
-          cartItems={cartItems}
-        />
-      case 'docs':
-        return <DocsWidget companyId={companyId} />
-      case 'reorders':
-        return <ReordersWidget companyId={companyId} />
-      case 'order-detail':
-        return <OrderDetailWidget orderId={widget.props?.orderId} onSendToChat={onSendToChat} />
-      case 'inventory':
-        return <InventoryWidget companyId={companyId} refreshKey={refreshKey} onSendToChat={onSendToChat} />
-      case 'schedules':
-        return <SchedulesWidget companyId={companyId} refreshKey={refreshKey} />
-      case 'settings':
-        return <SettingsWidget companyId={companyId} refreshKey={refreshKey} />
-      case 'admin':
-        return <AdminWidget />
-      case 'order-header':
-        return activeOrderId ? <OrderHeaderWidget orderId={activeOrderId} refreshKey={refreshKey} onDelete={() => { if (activeEntity) onCloseTab?.(activeEntity); onDeactivateEntity?.(); setLocalRefresh(k => k + 1) }} /> : null
-      case 'order-supplier':
-        return activeOrderId ? <OrderSupplierWidget orderId={activeOrderId} refreshKey={refreshKey} /> : null
-      case 'order-timeline':
-        return activeOrderId ? <OrderTimelineWidget orderId={activeOrderId} refreshKey={refreshKey} /> : null
-      case 'order-docs':
-        return activeOrderId ? <OrderDocsWidget orderId={activeOrderId} refreshKey={refreshKey} /> : null
-      case 'order-contacts':
-        return activeOrderId ? <OrderContactsWidget orderId={activeOrderId} refreshKey={refreshKey} /> : null
-      case 'order-findings':
-        return activeOrderId ? <OrderFindingsWidget orderId={activeOrderId} refreshKey={refreshKey} /> : null
-      case 'order-costing':
-        return activeOrderId ? <OrderCostingWidget orderId={activeOrderId} refreshKey={refreshKey} /> : null
-      case 'product-header':
-        return activeProductId ? <ProductHeaderWidget productId={activeProductId} refreshKey={refreshKey} onDelete={() => { if (activeEntity) onCloseTab?.(activeEntity); onDeactivateEntity?.(); setLocalRefresh(k => k + 1) }} /> : null
-      case 'product-suppliers':
-        return activeProductId ? <ProductSuppliersWidget productId={activeProductId} refreshKey={effectiveRefreshKey} /> : null
-      case 'product-orders':
-        return activeProductId ? (
-          <ProductOrdersWidget
-            productId={activeProductId}
-            refreshKey={effectiveRefreshKey}
-            onSelectOrder={(id, label) => onActivateEntity?.({ type: 'order', id, label })}
-          />
-        ) : null
-      default:
-        return null
-    }
+    const def = WIDGET_REGISTRY.get(widget.type)
+    if (!def) return null
+    return def.render(widget, shellCtx)
   }
 
   const cockpitWidgets = activeEntity?.type === 'product' ? PRODUCT_COCKPIT_WIDGETS : ORDER_COCKPIT_WIDGETS

@@ -1,38 +1,15 @@
 import type { WidgetType, WidgetInstance } from './types'
+import { WIDGETS } from './widgets-registry'
 
-/** Widgets the user can add manually via the "Agregar" menu. */
-export const WIDGET_CATALOG: { type: WidgetType; title: string; icon: string }[] = [
-  { type: 'orders', title: 'Pedidos', icon: '📦' },
-  { type: 'products', title: 'Productos', icon: '🏷' },
-  { type: 'docs', title: 'Documentos', icon: '📄' },
-  { type: 'reorders', title: 'Recompras', icon: '🔄' },
-  { type: 'inventory', title: 'Inventario', icon: '📊' },
-  { type: 'schedules', title: 'Tareas programadas', icon: '⏰' },
-  { type: 'admin', title: 'Agentes', icon: '🤖' },
-]
-
-/** Default size + min size when a widget is added via the catalog. */
-export const DEFAULT_SIZES: Record<WidgetType, { w: number; h: number; minW: number; minH: number }> = {
-  orders: { w: 3, h: 4, minW: 2, minH: 3 },
-  products: { w: 4, h: 4, minW: 3, minH: 3 },
-  docs: { w: 3, h: 4, minW: 2, minH: 3 },
-  reorders: { w: 3, h: 4, minW: 2, minH: 3 },
-  'order-detail': { w: 4, h: 5, minW: 3, minH: 3 },
-  inventory: { w: 5, h: 3, minW: 3, minH: 3 },
-  schedules: { w: 5, h: 5, minW: 3, minH: 3 },
-  settings: { w: 3, h: 3, minW: 2, minH: 3 },
-  admin: { w: 6, h: 5, minW: 4, minH: 4 },
-  'order-header': { w: 10, h: 3, minW: 4, minH: 2 },
-  'order-supplier': { w: 5, h: 5, minW: 3, minH: 3 },
-  'order-timeline': { w: 5, h: 5, minW: 3, minH: 3 },
-  'order-docs': { w: 5, h: 4, minW: 3, minH: 3 },
-  'order-contacts': { w: 5, h: 4, minW: 3, minH: 3 },
-  'order-findings': { w: 5, h: 5, minW: 3, minH: 3 },
-  'order-costing': { w: 5, h: 5, minW: 3, minH: 3 },
-  'product-header': { w: 10, h: 4, minW: 4, minH: 3 },
-  'product-suppliers': { w: 10, h: 4, minW: 4, minH: 3 },
-  'product-orders': { w: 10, h: 4, minW: 4, minH: 3 },
-}
+/**
+ * Widgets the user can add manually via the "Agregar" menu.
+ * Derived from the widget registry — every `category: 'general'` entry
+ * appears here automatically.
+ */
+export const WIDGET_CATALOG: { type: WidgetType; title: string; icon: string }[] =
+  WIDGETS
+    .filter(w => w.category === 'general')
+    .map(w => ({ type: w.type as WidgetType, title: w.title, icon: w.icon || '▦' }))
 
 // ============================================================================
 // General shell defaults (shown on first visit / after reset)
