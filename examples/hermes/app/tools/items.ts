@@ -2,7 +2,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { getSupabase } from '@proto/core-mcp'
 import { PHASES, type Phase } from '@proto/core-shared'
-import { err, isValidStep, json } from '@proto/core-mcp'
+import { err, json } from '@proto/core-mcp'
+import { isValidStep } from './_hermes-helpers.js'
 
 export function registerItemTools(server: McpServer) {
   server.tool(

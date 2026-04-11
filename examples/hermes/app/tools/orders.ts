@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { getSupabase } from '@proto/core-mcp'
-import { isValidTransition, type OrderStatus } from '@proto/core-shared'
+import { isValidTransition, type OrderStatus } from '../shared/index.js'
 import { adjustInventoryForStatusChange } from './inventory.js'
 
 export function registerOrderTools(server: McpServer) {

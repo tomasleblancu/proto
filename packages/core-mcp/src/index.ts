@@ -20,7 +20,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 // ── Re-exports for app tools ──
 
 export { getSupabase } from './supabase.js'
-export { ok, json, err, agent, agentErr, isValidStep } from './tools/_helpers.js'
+export { ok, json, err, agent, agentErr } from './tools/_helpers.js'
 export { registerUiTools } from './tools/ui.js'
 export { McpServer }
 

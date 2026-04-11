@@ -1,8 +1,7 @@
-import { PHASE_STEPS, type Phase } from '@proto/core-shared'
-
 /**
- * Shared helpers for MCP tool files. Keep this tiny and dependency-free —
- * only reusable primitives live here.
+ * Framework-level tool helpers. Keep this tiny and dependency-free —
+ * only reusable primitives live here. Domain-specific helpers live
+ * in the app (e.g. examples/hermes/app/tools/_hermes-helpers.ts).
  */
 
 export const ok = (text: string) => ({ content: [{ type: 'text' as const, text }] })
@@ -29,8 +28,4 @@ export function agentErr(summary: string, details?: Record<string, unknown>) {
   const out: Record<string, unknown> = { summary, error: true }
   if (details) out.data = details
   return ok(JSON.stringify(out))
-}
-
-export function isValidStep(phase: Phase, step: string): boolean {
-  return (PHASE_STEPS[phase] as readonly string[]).includes(step)
 }

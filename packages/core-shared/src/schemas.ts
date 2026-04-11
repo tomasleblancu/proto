@@ -1,6 +1,9 @@
 import { z } from 'zod'
-import { ORDER_STATUSES, DOC_TYPES } from './constants.js'
 
+/**
+ * Framework-level chat protocol shared between gateway and web.
+ * Domain-specific schemas live in the app under app/shared/.
+ */
 export const chatRequestSchema = z.object({
   company_id: z.string(),
   user_id: z.string(),
@@ -27,16 +30,3 @@ export interface SSEEvent {
   type: 'init' | 'text' | 'tool_use' | 'tool_result' | 'result' | 'error' | 'thinking'
   [key: string]: unknown
 }
-
-export const orderStatusSchema = z.enum(ORDER_STATUSES)
-export const docTypeSchema = z.enum(DOC_TYPES)
-
-export const productSchema = z.object({
-  name: z.string(),
-  hs_code: z.string().optional(),
-  quantity: z.number(),
-  unit_price: z.number(),
-  currency: z.string().default('USD'),
-})
-
-export type Product = z.infer<typeof productSchema>

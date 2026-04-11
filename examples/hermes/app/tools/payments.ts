@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { getSupabase } from '@proto/core-mcp'
-import { PAYMENT_TYPES, PAYMENT_STATUSES, DEFAULT_PAYEE, type PaymentType } from '@proto/core-shared'
+import { PAYMENT_TYPES, PAYMENT_STATUSES, DEFAULT_PAYEE, type PaymentType } from '../shared/index.js'
 import { agent, agentErr } from '@proto/core-mcp'
 
 const COSTING_MAP: Record<string, string> = {

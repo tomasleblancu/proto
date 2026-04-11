@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { getSupabase } from '@proto/core-mcp'
-import { SAMPLE_STATUSES, isValidSampleTransition, type SampleStatus } from '@proto/core-shared'
+import { SAMPLE_STATUSES, isValidSampleTransition, type SampleStatus } from '../shared/index.js'
 import { err, json } from '@proto/core-mcp'
 
 export function registerSampleTools(server: McpServer) {

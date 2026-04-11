@@ -12,7 +12,7 @@ import {
   type OrderStatus,
   type DocKind,
   type Incoterm,
-} from '@proto/core-shared'
+} from '../shared/index.js'
 import { agent, agentErr } from '@proto/core-mcp'
 
 const KIND_TO_PAYMENT_TYPE: Record<string, string> = {

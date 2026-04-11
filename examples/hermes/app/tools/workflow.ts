@@ -7,9 +7,10 @@ import {
   PHASE_EXECUTION,
   requiresHumanApproval,
   type Phase,
-  detectTlcRequirement,
 } from '@proto/core-shared'
-import { agent, agentErr, isValidStep } from '@proto/core-mcp'
+import { detectTlcRequirement } from '../shared/index.js'
+import { agent, agentErr } from '@proto/core-mcp'
+import { isValidStep } from './_hermes-helpers.js'
 
 const PHASE_ORDER = PHASES as readonly Phase[]
 const phaseIdx = (p: Phase) => PHASE_ORDER.indexOf(p)
