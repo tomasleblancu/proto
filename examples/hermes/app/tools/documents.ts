@@ -1,8 +1,7 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { readFileSync, existsSync } from 'node:fs'
 import { basename, extname } from 'node:path'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase, agent, agentErr } from '@proto/core-mcp'
 import {
   DOC_TYPES,
   DOC_KINDS,
@@ -13,7 +12,6 @@ import {
   type DocKind,
   type Incoterm,
 } from '../shared/index.js'
-import { agent, agentErr } from '@proto/core-mcp'
 
 const KIND_TO_PAYMENT_TYPE: Record<string, string> = {
   proforma_invoice: 'deposit',
@@ -23,18 +21,27 @@ const KIND_TO_PAYMENT_TYPE: Record<string, string> = {
   customs_agent_invoice: 'customs_provision (ya cubierto por la provision)',
 }
 
-export function registerDocumentTools(server: McpServer) {
-  server.tool(
-    'upload_document',
-    'Upload a document linked to an import order.',
-    {
+const LEGACY_DOC_TYPE: Record<string, string> = {
+  proforma_invoice: 'proforma_invoice',
+  commercial_invoice: 'commercial_invoice',
+  packing_list: 'packing_list',
+  certificate_of_origin: 'certificate_of_origin',
+  bill_of_lading: 'bl',
+  din: 'din',
+}
+
+export default [
+  defineTool({
+    name: 'upload_document',
+    description: 'Upload a document linked to an import order.',
+    schema: {
       order_id: z.string().describe('Order ID'),
       company_id: z.string().describe('Company ID'),
       doc_type: z.enum(DOC_TYPES).describe('Document type'),
       filename: z.string().describe('Original filename'),
       storage_path: z.string().describe('Path in Supabase Storage'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db.from('documents').insert({
         order_id: args.order_id,
@@ -51,14 +58,14 @@ export function registerDocumentTools(server: McpServer) {
         data: { id: data.id, filename: args.filename, doc_type: args.doc_type },
         hint: 'Prefiere attach_document sobre upload_document — soporta doc_kind tipado y hints de pago.',
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_documents',
-    'List all documents for an order.',
-    { order_id: z.string().describe('Order ID') },
-    async (args) => {
+  defineTool({
+    name: 'list_documents',
+    description: 'List all documents for an order.',
+    schema: { order_id: z.string().describe('Order ID') },
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db
         .from('documents')
@@ -82,17 +89,17 @@ export function registerDocumentTools(server: McpServer) {
         summary: `${documents.length} documento(s) para pedido ${args.order_id}`,
         data: { documents },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'validate_document_set',
-    'Check if all required documents for a given order stage are present.',
-    {
+  defineTool({
+    name: 'validate_document_set',
+    description: 'Check if all required documents for a given order stage are present.',
+    schema: {
       order_id: z.string().describe('Order ID'),
       stage: z.string().describe('Order stage to validate against'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data: docs, error } = await db
         .from('documents')
@@ -114,22 +121,13 @@ export function registerDocumentTools(server: McpServer) {
           ? 'Recopila los documentos faltantes con attach_document antes de avanzar de fase.'
           : undefined,
       })
-    }
-  )
+    },
+  }),
 
-  const LEGACY_DOC_TYPE: Record<string, string> = {
-    proforma_invoice: 'proforma_invoice',
-    commercial_invoice: 'commercial_invoice',
-    packing_list: 'packing_list',
-    certificate_of_origin: 'certificate_of_origin',
-    bill_of_lading: 'bl',
-    din: 'din',
-  }
-
-  server.tool(
-    'attach_document',
-    'Adjunta un documento tipado (state-machine aware) a un pedido/item. USA SIEMPRE ESTE TOOL con `kind` explicito — no uses upload_document. Si el doc dispara pago, devuelve un hint para que registres el payment. Si es un comprobante de pago, pasa `receipt_for_document_id` apuntando a la factura original.',
-    {
+  defineTool({
+    name: 'attach_document',
+    description: 'Adjunta un documento tipado (state-machine aware) a un pedido/item. USA SIEMPRE ESTE TOOL con `kind` explicito — no uses upload_document. Si el doc dispara pago, devuelve un hint para que registres el payment. Si es un comprobante de pago, pasa `receipt_for_document_id` apuntando a la factura original.',
+    schema: {
       company_id: z.string(),
       order_id: z.string(),
       kind: z.enum(DOC_KINDS),
@@ -139,7 +137,7 @@ export function registerDocumentTools(server: McpServer) {
       extracted: z.record(z.any()).describe('Contenido estructurado extraido del documento (montos, fechas, items). OBLIGATORIO — lee el archivo antes de adjuntar.'),
       receipt_for_document_id: z.string().optional().describe('Si kind=payment_receipt, id de la factura que este comprobante justifica.'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const triggers_payment = DOCS_THAT_TRIGGER_PAYMENT.includes(args.kind as DocKind)
       const { receipt_for_document_id, extracted, ...rest } = args
@@ -174,27 +172,27 @@ export function registerDocumentTools(server: McpServer) {
         },
         hint,
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_required_docs',
-    'Devuelve los docs requeridos para un incoterm dado.',
-    { incoterm: z.enum(['EXW', 'FOB', 'CIF', 'DDP']) },
-    async ({ incoterm }) => {
+  defineTool({
+    name: 'list_required_docs',
+    description: 'Devuelve los docs requeridos para un incoterm dado.',
+    schema: { incoterm: z.enum(['EXW', 'FOB', 'CIF', 'DDP']) },
+    handler: async ({ incoterm }) => {
       const docs = getRequiredDocsForIncoterm(incoterm as Incoterm)
       return agent({
         summary: `Docs requeridos para ${incoterm}: ${docs.join(', ')}`,
         data: { incoterm, required_docs: docs },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'get_document',
-    'Obtiene metadata de un documento. Si tiene extracted, no necesitas descargar el archivo.',
-    { document_id: z.string().describe('Document ID') },
-    async (args) => {
+  defineTool({
+    name: 'get_document',
+    description: 'Obtiene metadata de un documento. Si tiene extracted, no necesitas descargar el archivo.',
+    schema: { document_id: z.string().describe('Document ID') },
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db
         .from('documents')
@@ -206,7 +204,6 @@ export function registerDocumentTools(server: McpServer) {
 
       const hasExtracted = !!data.extracted
 
-      // Solo generar signed URL si no hay extracted (necesita re-leer)
       let download_url: string | undefined
       if (!hasExtracted) {
         const { data: urlData } = await db.storage
@@ -230,19 +227,19 @@ export function registerDocumentTools(server: McpServer) {
           ? 'Este documento no tiene extracted. Despues de leerlo, llama update_document(document_id, extracted={...}) para persistir los datos.'
           : undefined,
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'update_document',
-    'Actualiza campos de un documento existente. Uso principal: guardar `extracted` despues de leer un PDF por primera vez.',
-    {
+  defineTool({
+    name: 'update_document',
+    description: 'Actualiza campos de un documento existente. Uso principal: guardar `extracted` despues de leer un PDF por primera vez.',
+    schema: {
       document_id: z.string(),
       extracted: z.record(z.any()).optional().describe('Contenido estructurado extraido del documento'),
       kind: z.enum(DOC_KINDS).optional().describe('Corregir el tipo del documento'),
       notes: z.string().optional(),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { document_id, ...patch } = args
       const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
@@ -254,19 +251,19 @@ export function registerDocumentTools(server: McpServer) {
         summary: `Documento ${document_id} actualizado: ${Object.keys(clean).join(', ')}`,
         data: { id: data.id, kind: data.kind, has_extracted: !!data.extracted },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'upload_to_storage',
-    'Sube un archivo local a Supabase Storage y devuelve el storage_path. Usalo SIEMPRE despues de que el usuario suba un archivo por chat — el archivo temporal se borra en 5 min.',
-    {
+  defineTool({
+    name: 'upload_to_storage',
+    description: 'Sube un archivo local a Supabase Storage y devuelve el storage_path. Usalo SIEMPRE despues de que el usuario suba un archivo por chat — el archivo temporal se borra en 5 min.',
+    schema: {
       local_path: z.string().describe('Path absoluto del archivo local'),
       company_id: z.string().describe('Company ID'),
       order_id: z.string().optional().describe('Order ID'),
       filename: z.string().optional().describe('Nombre del archivo para Storage'),
     },
-    async (args) => {
+    handler: async (args) => {
       if (!existsSync(args.local_path)) {
         return agentErr(`Archivo no encontrado: ${args.local_path}. Puede que ya se haya borrado (TTL 5 min).`)
       }
@@ -307,6 +304,6 @@ export function registerDocumentTools(server: McpServer) {
         data: { storage_path: storagePath, filename: name, content_type: contentType },
         hint: 'Ahora llama attach_document con este storage_path para registrar el documento.',
       })
-    }
-  )
-}
+    },
+  }),
+]

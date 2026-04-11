@@ -1,65 +1,63 @@
 /**
  * Hermes app tool registration.
  *
- * Called once per MCP server instance (stdio or HTTP session) to register
- * all Hermes-specific tools. The core framework provides render_ui via
- * registerUiTools — we call that here too so every Hermes session has it.
+ * Every tool file exports a default array of ToolDefinition objects
+ * (created via defineTool). We concat them all and hand the result to
+ * registerTools which wraps each handler and calls server.tool() for us.
  *
- * Migration note (phase 3a): tool files are moving from the old
- * `registerXTools(server)` function-export shape to the new
- * `export default [defineTool(...), ...]` array-export shape. Both are
- * called below and coexist during the migration.
+ * To add a new tool: create a new file with `export default [defineTool(...)]`
+ * and append its import to the aggregation below. No need to touch the
+ * register function itself.
  */
 import type { McpServer } from '@proto/core-mcp'
 import { registerUiTools, registerTools } from '@proto/core-mcp'
 
-// ── New-style tools (defineTool + default array export) ──
+import activeOrderTools from './active-order.js'
+import companyTools from './company.js'
+import contactsTools from './contacts.js'
+import costingTools from './costing.js'
+import documentsTools from './documents.js'
+import findingsTools from './findings.js'
+import gmailTools from './gmail.js'
+import inventoryTools from './inventory.js'
 import itemTools from './items.js'
+import notificationsTools from './notifications.js'
+import ordersTools from './orders.js'
+import paymentsTools from './payments.js'
+import productsTools from './products.js'
+import reordersTools from './reorders.js'
+import samplesTools from './samples.js'
+import schedulingTools from './scheduling.js'
+import sourcingTools from './sourcing.js'
+import suppliersTools from './suppliers.js'
+import workflowTools from './workflow.js'
 
-// ── Old-style tools (registerXTools function export) ──
-import { registerOrderTools } from './orders.js'
-import { registerDocumentTools } from './documents.js'
-import { registerReorderTools } from './reorders.js'
-import { registerNotificationTools } from './notifications.js'
-import { registerCompanyTools } from './company.js'
-import { registerProductTools } from './products.js'
-import { registerInventoryTools } from './inventory.js'
-import { registerGmailTools } from './gmail.js'
-import { registerSourcingTools } from './sourcing.js'
-import { registerWorkflowTools } from './workflow.js'
-import { registerSampleTools } from './samples.js'
-import { registerPaymentTools } from './payments.js'
-import { registerSupplierTools } from './suppliers.js'
-import { registerSchedulingTools } from './scheduling.js'
-import { registerActiveOrderTools } from './active-order.js'
-import { registerContactTools } from './contacts.js'
-import { registerFindingTools } from './findings.js'
-import { registerCostingTools } from './costing.js'
+const ALL_APP_TOOLS = [
+  ...activeOrderTools,
+  ...companyTools,
+  ...contactsTools,
+  ...costingTools,
+  ...documentsTools,
+  ...findingsTools,
+  ...gmailTools,
+  ...inventoryTools,
+  ...itemTools,
+  ...notificationsTools,
+  ...ordersTools,
+  ...paymentsTools,
+  ...productsTools,
+  ...reordersTools,
+  ...samplesTools,
+  ...schedulingTools,
+  ...sourcingTools,
+  ...suppliersTools,
+  ...workflowTools,
+]
 
 export function registerAppTools(server: McpServer): void {
-  // Framework tools (render_ui)
+  // Framework tool — generative UI (render_ui)
   registerUiTools(server)
 
-  // New-style tools
-  registerTools(server, itemTools)
-
-  // Hermes domain tools (legacy shape — being migrated to defineTool)
-  registerOrderTools(server)
-  registerDocumentTools(server)
-  registerReorderTools(server)
-  registerNotificationTools(server)
-  registerCompanyTools(server)
-  registerProductTools(server)
-  registerInventoryTools(server)
-  registerGmailTools(server)
-  registerSourcingTools(server)
-  registerWorkflowTools(server)
-  registerSampleTools(server)
-  registerPaymentTools(server)
-  registerSupplierTools(server)
-  registerSchedulingTools(server)
-  registerActiveOrderTools(server)
-  registerContactTools(server)
-  registerFindingTools(server)
-  registerCostingTools(server)
+  // Domain tools
+  registerTools(server, ALL_APP_TOOLS)
 }

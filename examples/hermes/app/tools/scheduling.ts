@@ -1,8 +1,6 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
 import { isValidCronExpr, TASK_OUTPUT_CHANNELS, TASK_NOTIFY_TRIGGERS } from '@proto/core-shared'
-import { err, json } from '@proto/core-mcp'
 
 /**
  * Agent-facing CRUD + control for scheduled tasks.
@@ -37,11 +35,11 @@ async function recalcNextRun(taskId: string): Promise<string | null> {
   }
 }
 
-export function registerSchedulingTools(server: McpServer) {
-  server.tool(
-    'schedule_task',
-    'Crea una tarea programada (cron) que ejecuta al agente con un prompt dado en intervalos regulares. Ej: "revisa mail cada 15 min", "escanea recompras todos los dias a las 9am". El cron_expr es formato estandar de 5 campos (min hora dia mes dow). Despues de crear, computa next_run_at automaticamente.',
-    {
+export default [
+  defineTool({
+    name: 'schedule_task',
+    description: 'Crea una tarea programada (cron) que ejecuta al agente con un prompt dado en intervalos regulares. Ej: "revisa mail cada 15 min", "escanea recompras todos los dias a las 9am". El cron_expr es formato estandar de 5 campos (min hora dia mes dow). Despues de crear, computa next_run_at automaticamente.',
+    schema: {
       company_id: z.string(),
       name: z.string().min(1).max(80).describe('Slug corto unico por empresa, ej: "check-inbox", "daily-reorders"'),
       description: z.string().optional().describe('Para que sirve esta tarea — se muestra en la UI'),
@@ -55,7 +53,7 @@ export function registerSchedulingTools(server: McpServer) {
       output_recipient: z.string().email().optional().describe('Email de destino si output_channel="email". El remitente siempre es el mail del sistema Hermes, no la cuenta del usuario.'),
       notify_on: z.enum(TASK_NOTIFY_TRIGGERS).default('always').describe('Cuando disparar la notificacion: "always" en cada run, "on_change" solo si el status cambio, "on_error" solo en fallas, "never" nunca (util para desactivar temporalmente).'),
     },
-    async (args) => {
+    handler: async (args) => {
       if (!isValidCronExpr(args.cron_expr)) {
         return err(`cron_expr invalido: "${args.cron_expr}". Formato esperado: 5 campos separados por espacio. Ejemplos: "*/15 * * * *", "0 9 * * *"`)
       }
@@ -82,17 +80,17 @@ export function registerSchedulingTools(server: McpServer) {
 
       const nextRunAt = await recalcNextRun(data.id)
       return json({ ...data, next_run_at: nextRunAt })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_scheduled_tasks',
-    'Lista las tareas programadas de una empresa con su estado actual y proximo run.',
-    {
+  defineTool({
+    name: 'list_scheduled_tasks',
+    description: 'Lista las tareas programadas de una empresa con su estado actual y proximo run.',
+    schema: {
       company_id: z.string(),
       include_disabled: z.boolean().default(true),
     },
-    async ({ company_id, include_disabled }) => {
+    handler: async ({ company_id, include_disabled }) => {
       const db = getSupabase()
       let q = db
         .from('scheduled_tasks')
@@ -102,17 +100,17 @@ export function registerSchedulingTools(server: McpServer) {
       if (!include_disabled) q = q.eq('enabled', true)
       const { data, error } = await q
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'get_task_runs',
-    'Devuelve el historial de ejecuciones recientes de una tarea programada. Util para debuggear fallas o ver cuanto dura.',
-    {
+  defineTool({
+    name: 'get_task_runs',
+    description: 'Devuelve el historial de ejecuciones recientes de una tarea programada. Util para debuggear fallas o ver cuanto dura.',
+    schema: {
       task_id: z.string(),
       limit: z.number().int().positive().default(20),
     },
-    async ({ task_id, limit }) => {
+    handler: async ({ task_id, limit }) => {
       const db = getSupabase()
       const { data, error } = await db
         .from('task_runs')
@@ -121,28 +119,28 @@ export function registerSchedulingTools(server: McpServer) {
         .order('started_at', { ascending: false })
         .limit(limit)
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'pause_task',
-    'Desactiva una tarea programada sin borrarla. No correra mas hasta llamar resume_task.',
-    { task_id: z.string() },
-    async ({ task_id }) => {
+  defineTool({
+    name: 'pause_task',
+    description: 'Desactiva una tarea programada sin borrarla. No correra mas hasta llamar resume_task.',
+    schema: { task_id: z.string() },
+    handler: async ({ task_id }) => {
       const db = getSupabase()
       const { error } = await db
         .from('scheduled_tasks')
         .update({ enabled: false, next_run_at: null })
         .eq('id', task_id)
       return error ? err(error.message) : json({ ok: true, paused: task_id })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'resume_task',
-    'Reactiva una tarea pausada y computa su proximo run.',
-    { task_id: z.string() },
-    async ({ task_id }) => {
+  defineTool({
+    name: 'resume_task',
+    description: 'Reactiva una tarea pausada y computa su proximo run.',
+    schema: { task_id: z.string() },
+    handler: async ({ task_id }) => {
       const db = getSupabase()
       const { error } = await db
         .from('scheduled_tasks')
@@ -151,13 +149,13 @@ export function registerSchedulingTools(server: McpServer) {
       if (error) return err(error.message)
       const nextRunAt = await recalcNextRun(task_id)
       return json({ ok: true, resumed: task_id, next_run_at: nextRunAt })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'update_task',
-    'Actualiza campos de una tarea programada (cron_expr, prompt, description, enabled_skills, etc). Solo pasa los campos que querés cambiar.',
-    {
+  defineTool({
+    name: 'update_task',
+    description: 'Actualiza campos de una tarea programada (cron_expr, prompt, description, enabled_skills, etc). Solo pasa los campos que querés cambiar.',
+    schema: {
       task_id: z.string(),
       name: z.string().optional(),
       description: z.string().optional(),
@@ -171,7 +169,7 @@ export function registerSchedulingTools(server: McpServer) {
       output_recipient: z.string().email().optional().nullable(),
       notify_on: z.enum(TASK_NOTIFY_TRIGGERS).optional(),
     },
-    async (args) => {
+    handler: async (args) => {
       const { task_id, ...updates } = args
       if (updates.cron_expr && !isValidCronExpr(updates.cron_expr)) {
         return err(`cron_expr invalido: "${updates.cron_expr}"`)
@@ -188,33 +186,32 @@ export function registerSchedulingTools(server: McpServer) {
         .single()
       if (error) return err(error.message)
 
-      // Recompute next_run if schedule-affecting fields changed
       if (patch.cron_expr || patch.timezone) {
         await recalcNextRun(task_id)
       }
       return json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'delete_task',
-    'Borra una tarea programada y su historial de runs (cascade).',
-    { task_id: z.string() },
-    async ({ task_id }) => {
+  defineTool({
+    name: 'delete_task',
+    description: 'Borra una tarea programada y su historial de runs (cascade).',
+    schema: { task_id: z.string() },
+    handler: async ({ task_id }) => {
       const db = getSupabase()
       const { error } = await db.from('scheduled_tasks').delete().eq('id', task_id)
       return error ? err(error.message) : json({ ok: true, deleted: task_id })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'trigger_task_now',
-    'Dispara manualmente una tarea programada ahora, sin esperar al cron. Ideal para pruebas o para el boton "Run now" de la UI. El run aparece en el historial con trigger="manual".',
-    {
+  defineTool({
+    name: 'trigger_task_now',
+    description: 'Dispara manualmente una tarea programada ahora, sin esperar al cron. Ideal para pruebas o para el boton "Run now" de la UI. El run aparece en el historial con trigger="manual".',
+    schema: {
       task_id: z.string(),
       triggered_by: z.string().optional().default('agent'),
     },
-    async ({ task_id, triggered_by }) => {
+    handler: async ({ task_id, triggered_by }) => {
       try {
         const res = await fetch(`${DEFAULT_GATEWAY}/cron/trigger`, {
           method: 'POST',
@@ -230,6 +227,6 @@ export function registerSchedulingTools(server: McpServer) {
       } catch (e: any) {
         return err(e?.message || 'gateway unreachable')
       }
-    }
-  )
-}
+    },
+  }),
+]

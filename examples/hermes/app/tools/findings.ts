@@ -1,7 +1,5 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
-import { err, json } from '@proto/core-mcp'
+import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
 
 const SOURCES = ['email', 'document', 'manual', 'agent_inference'] as const
 const CATEGORIES = [
@@ -9,17 +7,17 @@ const CATEGORIES = [
   'document', 'contact', 'other',
 ] as const
 
-export function registerFindingTools(server: McpServer) {
-  server.tool(
-    'record_finding',
-    [
+export default [
+  defineTool({
+    name: 'record_finding',
+    description: [
       'Registra un hallazgo del agente sobre un pedido. Llamalo cada vez que',
       'leas un correo, documento, o infieras algo relevante del estado de la',
       'carga. Si el finding viene de un correo, pasa gmail_message_id para',
       'trazabilidad y dedup (no se duplicara). Llamalo ANTES o junto con',
       'advance_step para dejar registro del porque avanzo la fase.',
     ].join(' '),
-    {
+    schema: {
       order_id: z.string(),
       company_id: z.string(),
       source: z.enum(SOURCES),
@@ -33,11 +31,10 @@ export function registerFindingTools(server: McpServer) {
       document_id: z.string().optional(),
       occurred_at: z.string().optional().describe('ISO timestamp del evento (no el de registro)'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const payload: any = { ...args }
       if (!payload.category) payload.category = 'status_update'
-      // Dedup: si ya existe un finding con el mismo gmail_message_id para esta orden, no insertar.
       if (payload.gmail_message_id) {
         const { data: existing } = await db
           .from('order_findings')
@@ -49,34 +46,34 @@ export function registerFindingTools(server: McpServer) {
       }
       const { data, error } = await db.from('order_findings').insert(payload).select().single()
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_findings',
-    'Lista findings registrados para un pedido, ordenados por occurred_at desc.',
-    {
+  defineTool({
+    name: 'list_findings',
+    description: 'Lista findings registrados para un pedido, ordenados por occurred_at desc.',
+    schema: {
       order_id: z.string(),
       category: z.enum(CATEGORIES).optional(),
       limit: z.number().optional(),
     },
-    async ({ order_id, category, limit = 50 }) => {
+    handler: async ({ order_id, category, limit = 50 }) => {
       const db = getSupabase()
       let q = db.from('order_findings').select('*').eq('order_id', order_id)
       if (category) q = q.eq('category', category)
       const { data, error } = await q.order('occurred_at', { ascending: false }).limit(limit)
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'delete_finding',
-    'Elimina un finding por id (solo si fue registrado por error).',
-    { id: z.string() },
-    async ({ id }) => {
+  defineTool({
+    name: 'delete_finding',
+    description: 'Elimina un finding por id (solo si fue registrado por error).',
+    schema: { id: z.string() },
+    handler: async ({ id }) => {
       const db = getSupabase()
       const { error } = await db.from('order_findings').delete().eq('id', id)
       return error ? err(error.message) : json({ ok: true })
-    }
-  )
-}
+    },
+  }),
+]

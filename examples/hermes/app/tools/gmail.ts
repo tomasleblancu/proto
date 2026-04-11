@@ -1,6 +1,5 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase } from '@proto/core-mcp'
 
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || ''
 const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || ''
@@ -23,7 +22,6 @@ async function getGmailClient(userId: string) {
     expiry_date: tokens.expiry_date,
   })
 
-  // Auto-refresh if expired
   oauth2.on('tokens', async (newTokens) => {
     await db.from('gmail_tokens').update({
       access_token: newTokens.access_token || tokens.access_token,
@@ -49,7 +47,7 @@ function extractBody(payload: any): string {
     }
     for (const part of payload.parts) {
       if (part.mimeType === 'text/html' && part.body?.data) {
-        return decodeBody(part.body).replace(/<[^>]*>/g, '') // strip HTML
+        return decodeBody(part.body).replace(/<[^>]*>/g, '')
       }
     }
   }
@@ -60,43 +58,37 @@ function getHeader(headers: any[], name: string): string {
   return headers?.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value || ''
 }
 
-export function registerGmailTools(server: McpServer) {
-  server.tool(
-    'gmail_status',
-    'Check if Gmail is connected for the current user.',
-    {},
-    async () => {
+async function resolveUid(): Promise<string> {
+  const userId = process.env.USER_ID || ''
+  if (!userId.includes('@')) return userId
+  const db = getSupabase()
+  const { data } = await db.auth.admin.listUsers()
+  return data?.users?.find(u => u.email === userId)?.id || userId
+}
+
+export default [
+  defineTool({
+    name: 'gmail_status',
+    description: 'Check if Gmail is connected for the current user.',
+    schema: {},
+    handler: async () => {
       const db = getSupabase()
-      const userId = process.env.USER_ID || ''
-      // Resolve email to UUID if needed
-      let uid = userId
-      if (userId.includes('@')) {
-        const { data } = await db.auth.admin.listUsers()
-        const user = data?.users?.find(u => u.email === userId)
-        if (user) uid = user.id
-      }
+      const uid = await resolveUid()
       const { data } = await db.from('gmail_tokens').select('email, connected_at').eq('user_id', uid).single()
       if (!data) return { content: [{ type: 'text' as const, text: 'Gmail no conectado. El usuario debe conectar Gmail desde la web app (Config > Gmail).' }] }
       return { content: [{ type: 'text' as const, text: `Gmail conectado: ${data.email} (desde ${data.connected_at})` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'read_emails',
-    'Read recent emails from the user\'s Gmail inbox.',
-    {
+  defineTool({
+    name: 'read_emails',
+    description: 'Read recent emails from the user\'s Gmail inbox.',
+    schema: {
       query: z.string().optional().describe('Search query (Gmail search syntax). E.g. "from:supplier@example.com" or "subject:cotizacion"'),
       max_results: z.number().default(5).describe('Max emails to return'),
     },
-    async (args) => {
-      const userId = process.env.USER_ID || ''
-      const db = getSupabase()
-      let uid = userId
-      if (userId.includes('@')) {
-        const { data } = await db.auth.admin.listUsers()
-        uid = data?.users?.find(u => u.email === userId)?.id || userId
-      }
-
+    handler: async (args) => {
+      const uid = await resolveUid()
       const gmail = await getGmailClient(uid)
       if (!gmail) return { content: [{ type: 'text' as const, text: 'Gmail no conectado.' }] }
 
@@ -132,27 +124,20 @@ export function registerGmailTools(server: McpServer) {
       } catch (err: any) {
         return { content: [{ type: 'text' as const, text: `Error leyendo Gmail: ${err.message}` }] }
       }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'send_email',
-    'Send an email from the user\'s Gmail.',
-    {
+  defineTool({
+    name: 'send_email',
+    description: 'Send an email from the user\'s Gmail.',
+    schema: {
       to: z.string().describe('Recipient email address'),
       subject: z.string().describe('Email subject'),
       body: z.string().describe('Email body (plain text)'),
       cc: z.string().optional().describe('CC email address'),
     },
-    async (args) => {
-      const userId = process.env.USER_ID || ''
-      const db = getSupabase()
-      let uid = userId
-      if (userId.includes('@')) {
-        const { data } = await db.auth.admin.listUsers()
-        uid = data?.users?.find(u => u.email === userId)?.id || userId
-      }
-
+    handler: async (args) => {
+      const uid = await resolveUid()
       const gmail = await getGmailClient(uid)
       if (!gmail) return { content: [{ type: 'text' as const, text: 'Gmail no conectado.' }] }
 
@@ -176,25 +161,18 @@ export function registerGmailTools(server: McpServer) {
       } catch (err: any) {
         return { content: [{ type: 'text' as const, text: `Error enviando: ${err.message}` }] }
       }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'search_emails',
-    'Search emails by keyword, sender, or date range.',
-    {
+  defineTool({
+    name: 'search_emails',
+    description: 'Search emails by keyword, sender, or date range.',
+    schema: {
       query: z.string().describe('Gmail search query. Examples: "from:john@example.com", "subject:invoice after:2026/01/01", "has:attachment filename:pdf"'),
       max_results: z.number().default(10).describe('Max results'),
     },
-    async (args) => {
-      const userId = process.env.USER_ID || ''
-      const db = getSupabase()
-      let uid = userId
-      if (userId.includes('@')) {
-        const { data } = await db.auth.admin.listUsers()
-        uid = data?.users?.find(u => u.email === userId)?.id || userId
-      }
-
+    handler: async (args) => {
+      const uid = await resolveUid()
       const gmail = await getGmailClient(uid)
       if (!gmail) return { content: [{ type: 'text' as const, text: 'Gmail no conectado.' }] }
 
@@ -226,6 +204,6 @@ export function registerGmailTools(server: McpServer) {
       } catch (err: any) {
         return { content: [{ type: 'text' as const, text: `Error: ${err.message}` }] }
       }
-    }
-  )
-}
+    },
+  }),
+]

@@ -1,17 +1,16 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase } from '@proto/core-mcp'
 
 const COMPANY_ID = () => process.env.COMPANY_ID || ''
 
-export function registerInventoryTools(server: McpServer) {
-  server.tool(
-    'get_inventory',
-    'Get current inventory levels for a product or all products. Shows reserved (in orders), in_transit (shipped), and available (ready for sale).',
-    {
+export default [
+  defineTool({
+    name: 'get_inventory',
+    description: 'Get current inventory levels for a product or all products. Shows reserved (in orders), in_transit (shipped), and available (ready for sale).',
+    schema: {
       product_id: z.string().optional().describe('Specific product ID. If omitted, returns all products with inventory.'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const companyId = COMPANY_ID()
 
@@ -40,13 +39,13 @@ export function registerInventoryTools(server: McpServer) {
       })
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(summary, null, 2) }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'adjust_inventory',
-    'Make an inventory adjustment (add or subtract stock). Use positive numbers to add, negative to subtract.',
-    {
+  defineTool({
+    name: 'adjust_inventory',
+    description: 'Make an inventory adjustment (add or subtract stock). Use positive numbers to add, negative to subtract.',
+    schema: {
       product_id: z.string().describe('Product ID'),
       field: z.enum(['reserved', 'in_transit', 'available']).describe('Which stock type to adjust'),
       quantity: z.number().describe('Amount to adjust (positive = add, negative = subtract)'),
@@ -57,11 +56,10 @@ export function registerInventoryTools(server: McpServer) {
       reason: z.string().optional().describe('Reason for the adjustment'),
       order_id: z.string().optional().describe('Related order ID'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const companyId = COMPANY_ID()
 
-      // Ensure inventory record exists
       const { data: existing } = await db.from('inventory')
         .select('id, reserved, in_transit, available')
         .eq('product_id', args.product_id)
@@ -69,7 +67,6 @@ export function registerInventoryTools(server: McpServer) {
         .single()
 
       if (!existing) {
-        // Create inventory record
         await db.from('inventory').insert({
           product_id: args.product_id,
           company_id: companyId,
@@ -79,7 +76,6 @@ export function registerInventoryTools(server: McpServer) {
         })
       }
 
-      // Calculate new value
       const current = existing ? (existing as any)[args.field] : 0
       const newValue = current + args.quantity
 
@@ -87,7 +83,6 @@ export function registerInventoryTools(server: McpServer) {
         return { content: [{ type: 'text' as const, text: `Error: no hay suficiente stock. ${args.field} actual: ${current}, ajuste: ${args.quantity}` }] }
       }
 
-      // Update inventory
       const { error: updateError } = await db.from('inventory')
         .update({ [args.field]: newValue, updated_at: new Date().toISOString() })
         .eq('product_id', args.product_id)
@@ -95,7 +90,6 @@ export function registerInventoryTools(server: McpServer) {
 
       if (updateError) return { content: [{ type: 'text' as const, text: `Error: ${updateError.message}` }] }
 
-      // Log adjustment
       await db.from('inventory_adjustments').insert({
         product_id: args.product_id,
         company_id: companyId,
@@ -108,17 +102,17 @@ export function registerInventoryTools(server: McpServer) {
       })
 
       return { content: [{ type: 'text' as const, text: `Inventario ajustado: ${args.field} ${args.quantity > 0 ? '+' : ''}${args.quantity} (nuevo: ${newValue})` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'get_inventory_history',
-    'Get the adjustment history for a product.',
-    {
+  defineTool({
+    name: 'get_inventory_history',
+    description: 'Get the adjustment history for a product.',
+    schema: {
       product_id: z.string().describe('Product ID'),
       limit: z.number().default(20).describe('Max records'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db.from('inventory_adjustments')
         .select('*, products(name)')
@@ -129,9 +123,9 @@ export function registerInventoryTools(server: McpServer) {
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       if (!data || data.length === 0) return { content: [{ type: 'text' as const, text: 'Sin movimientos de inventario.' }] }
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
-}
+    },
+  }),
+]
 
 // ============================================================================
 // Auto-adjust helper (not an MCP tool) — called by orders.ts when
@@ -145,12 +139,10 @@ interface Adjustment {
 }
 
 function getAdjustments(from: string, to: string, qty: number): Adjustment[] {
-  // Order created (sourcing/draft → po_sent): reserve stock
   if (['sourcing', 'draft'].includes(from) && to === 'po_sent') {
     return [{ field: 'reserved', quantity: qty, type: 'order_created' }]
   }
 
-  // Order shipped: move from reserved to in_transit
   if (['po_sent', 'production'].includes(from) && to === 'shipped') {
     return [
       { field: 'reserved', quantity: -qty, type: 'order_shipped' },
@@ -158,10 +150,8 @@ function getAdjustments(from: string, to: string, qty: number): Adjustment[] {
     ]
   }
 
-  // Already in transit, moving to customs (no inventory change)
   if (from === 'in_transit' && to === 'customs') return []
 
-  // Order delivered: move from in_transit to available
   if (['in_transit', 'customs'].includes(from) && to === 'delivered') {
     return [
       { field: 'in_transit', quantity: -qty, type: 'order_delivered' },
@@ -169,7 +159,6 @@ function getAdjustments(from: string, to: string, qty: number): Adjustment[] {
     ]
   }
 
-  // Order cancelled: release reserved stock
   if (to === 'cancelled') {
     if (['sourcing', 'draft', 'po_sent', 'production'].includes(from)) {
       return [{ field: 'reserved', quantity: -qty, type: 'order_cancelled' }]
@@ -197,7 +186,6 @@ export async function adjustInventoryForStatusChange(
   if (!items || items.length === 0) return
 
   for (const item of items) {
-    // Ensure inventory record exists
     const { data: inv } = await db.from('inventory')
       .select('id')
       .eq('product_id', item.product_id)

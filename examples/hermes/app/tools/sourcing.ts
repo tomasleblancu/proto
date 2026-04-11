@@ -1,8 +1,7 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { randomUUID, createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase } from '@proto/core-mcp'
 
 // In-memory cache: sha256(image bytes) -> { offers, expiresAt }
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24h
@@ -26,7 +25,6 @@ function cacheGet(key: string): any[] | null {
 
 function cacheSet(key: string, offers: any[]): void {
   if (cache.size >= CACHE_MAX) {
-    // Evict oldest (Map iterates in insertion order)
     const firstKey = cache.keys().next().value
     if (firstKey) cache.delete(firstKey)
   }
@@ -147,83 +145,17 @@ async function bytesFromSource(source: string): Promise<{ bytes: Uint8Array; mim
   return { bytes: new Uint8Array(buf), mime, ext }
 }
 
-// ---------- ZenRows-powered product detail scraper ----------
-
-const ZENROWS_API = 'https://api.zenrows.com/v1/'
-
-async function fetchAlibabaHtml(url: string): Promise<string> {
-  const apiKey = process.env.ZENROWS_API_KEY
-  if (!apiKey) throw new Error('ZENROWS_API_KEY not set in env')
-  const params = new URLSearchParams({
-    apikey: apiKey,
-    url,
-    js_render: 'true',
-    premium_proxy: 'true',
-  })
-  const res = await fetch(`${ZENROWS_API}?${params}`)
-  if (!res.ok) throw new Error(`zenrows http ${res.status}: ${(await res.text()).slice(0, 200)}`)
-  return res.text()
-}
-
-function extractRunParams(html: string): any | null {
-  // Alibaba consumer pages embed product data in `window.runParams = { data: {...} }`
-  const m = html.match(/window\.runParams\s*=\s*\{[\s\S]*?\};?\s*<\/script>/)
-  if (!m) return null
-  try {
-    // Trim trailing `;</script>` and leading `window.runParams = `
-    const body = m[0].replace(/<\/script>\s*$/, '').replace(/^window\.runParams\s*=\s*/, '').replace(/;\s*$/, '')
-    return JSON.parse(body)
-  } catch {
-    // Fallback: find the `data: { ... }` block
-    const d = html.match(/"data"\s*:\s*(\{[\s\S]*?\})\s*,\s*"i18nMap"/)
-    if (!d) return null
-    try { return { data: JSON.parse(d[1]) } } catch { return null }
-  }
-}
-
-function summarizeProduct(rp: any): any {
-  const data = rp?.data || {}
-  const globalData = data.globalData || {}
-  const productInfo = globalData.product || data.productInfo || {}
-  const tradeInfo = globalData.tradeInfo || {}
-  const company = globalData.company || data.companyModule || {}
-  const seo = globalData.seoModule || {}
-  const shipping = globalData.shippingInfo || {}
-  const attrs = globalData.attributesModule?.props || data.productPropsModule?.props || []
-
-  return {
-    title: productInfo.subject || seo.subject || null,
-    product_id: productInfo.productId || null,
-    price: tradeInfo.priceModel?.priceList || tradeInfo.priceList || null,
-    moq: tradeInfo.moqModel?.moq || tradeInfo.minOrderQuantity || null,
-    lead_time: tradeInfo.leadTimeModel || globalData.leadTimeModule || null,
-    images: productInfo.mediaItems?.map((m: any) => m.imageUrl).filter(Boolean) || productInfo.images || [],
-    attributes: attrs.map((p: any) => ({ name: p.attrName || p.name, value: p.attrValue || p.value })),
-    package: globalData.packagingDeliveryModule || null,
-    shipping,
-    supplier: {
-      name: company.companyName || company.name || null,
-      country: company.countryFullName || company.country || null,
-      years: company.yearsAsGoldSupplier || company.goldSupplierYears || null,
-      verified: company.verified ?? null,
-      response_time: company.responseTime || null,
-      response_rate: company.responseRate || null,
-    },
-  }
-}
-
-export function registerSourcingTools(server: McpServer) {
-  server.tool(
-    'attach_product_image',
-    'Download an image from a URL or local path, upload it to the product-images bucket, and append it to products.image_urls for the given product. Returns the public URL. Use this BEFORE searching Alibaba when the user provides an image for a product.',
-    {
+export default [
+  defineTool({
+    name: 'attach_product_image',
+    description: 'Download an image from a URL or local path, upload it to the product-images bucket, and append it to products.image_urls for the given product. Returns the public URL. Use this BEFORE searching Alibaba when the user provides an image for a product.',
+    schema: {
       product_id: z.string().describe('Product ID in the catalog'),
       image_source: z.string().describe('Public URL or absolute local file path of the image'),
     },
-    async ({ product_id, image_source }) => {
+    handler: async ({ product_id, image_source }) => {
       try {
         const db = getSupabase()
-        // Load product to get company_id + current image_urls
         const { data: product, error: pErr } = await db
           .from('products')
           .select('id, company_id, image_urls')
@@ -251,29 +183,29 @@ export function registerSourcingTools(server: McpServer) {
         return {
           content: [
             {
-              type: 'text',
+              type: 'text' as const,
               text: JSON.stringify({ public_url: publicUrl, product_id, total_images: newUrls.length }),
             },
           ],
         }
       } catch (err: any) {
         return {
-          content: [{ type: 'text', text: `Error: ${err?.message || String(err)}` }],
+          content: [{ type: 'text' as const, text: `Error: ${err?.message || String(err)}` }],
           isError: true,
         }
       }
     },
-  )
+  }),
 
-  server.tool(
-    'search_alibaba_by_image_url',
-    'Search Alibaba suppliers by image. Pass a public image URL. Returns up to N offers with supplier, price, MOQ, URL. Use for sourcing during intake.',
-    {
+  defineTool({
+    name: 'search_alibaba_by_image_url',
+    description: 'Search Alibaba suppliers by image. Pass a public image URL. Returns up to N offers with supplier, price, MOQ, URL. Use for sourcing during intake.',
+    schema: {
       image_url: z.string().url().describe('Public URL of the reference product image'),
       limit: z.number().int().min(1).max(40).default(20).describe('Max offers to return (default 20)'),
       language: z.enum(['es', 'en']).default('es').describe('Result language'),
     },
-    async ({ image_url, limit, language }) => {
+    handler: async ({ image_url, limit, language }) => {
       try {
         const imgRes = await fetch(image_url)
         if (!imgRes.ok) throw new Error(`image fetch http ${imgRes.status}`)
@@ -281,40 +213,40 @@ export function registerSourcingTools(server: McpServer) {
         const bytes = new Uint8Array(await imgRes.arrayBuffer())
         const { offers, cached } = await sourceFromBytes(bytes, mime, limit, language)
         return {
-          content: [{ type: 'text', text: JSON.stringify({ count: offers.length, cached, offers }, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify({ count: offers.length, cached, offers }, null, 2) }],
         }
       } catch (err: any) {
         return {
-          content: [{ type: 'text', text: `Error: ${err?.message || String(err)}` }],
+          content: [{ type: 'text' as const, text: `Error: ${err?.message || String(err)}` }],
           isError: true,
         }
       }
     },
-  )
+  }),
 
-  server.tool(
-    'search_alibaba_by_image_path',
-    'Search Alibaba suppliers by a local image file path (inside the session directory). Returns offers with supplier, price, MOQ, URL.',
-    {
+  defineTool({
+    name: 'search_alibaba_by_image_path',
+    description: 'Search Alibaba suppliers by a local image file path (inside the session directory). Returns offers with supplier, price, MOQ, URL.',
+    schema: {
       file_path: z.string().describe('Absolute path to an image file'),
       limit: z.number().int().min(1).max(40).default(20),
       language: z.enum(['es', 'en']).default('es'),
     },
-    async ({ file_path, limit, language }) => {
+    handler: async ({ file_path, limit, language }) => {
       try {
         const buf = await readFile(file_path)
         const bytes = new Uint8Array(buf)
         const mime = file_path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg'
         const { offers, cached } = await sourceFromBytes(bytes, mime, limit, language)
         return {
-          content: [{ type: 'text', text: JSON.stringify({ count: offers.length, cached, offers }, null, 2) }],
+          content: [{ type: 'text' as const, text: JSON.stringify({ count: offers.length, cached, offers }, null, 2) }],
         }
       } catch (err: any) {
         return {
-          content: [{ type: 'text', text: `Error: ${err?.message || String(err)}` }],
+          content: [{ type: 'text' as const, text: `Error: ${err?.message || String(err)}` }],
           isError: true,
         }
       }
     },
-  )
-}
+  }),
+]

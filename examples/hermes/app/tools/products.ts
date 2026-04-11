@@ -1,12 +1,11 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase } from '@proto/core-mcp'
 
-export function registerProductTools(server: McpServer) {
-  server.tool(
-    'create_product',
-    'Create a product in the company catalog. Used during intake to register a new product before creating an order.',
-    {
+export default [
+  defineTool({
+    name: 'create_product',
+    description: 'Create a product in the company catalog. Used during intake to register a new product before creating an order.',
+    schema: {
       company_id: z.string().describe('Company ID'),
       name: z.string().describe('Product name'),
       description: z.string().optional().describe('Detailed description'),
@@ -26,7 +25,7 @@ export function registerProductTools(server: McpServer) {
       image_urls: z.array(z.string()).optional().describe('Product image URLs'),
       notes: z.string().optional().describe('Additional notes'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db.from('products').insert({
         company_id: args.company_id,
@@ -51,18 +50,18 @@ export function registerProductTools(server: McpServer) {
 
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: `Producto creado: ${data.name} (ID: ${data.id})` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_products',
-    'List products in the company catalog.',
-    {
+  defineTool({
+    name: 'list_products',
+    description: 'List products in the company catalog.',
+    schema: {
       company_id: z.string().describe('Company ID'),
       active_only: z.boolean().default(true).describe('Only active products'),
       search: z.string().optional().describe('Search by name or description'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       let query = db.from('products').select('*')
         .eq('company_id', args.company_id)
@@ -75,25 +74,25 @@ export function registerProductTools(server: McpServer) {
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       if (!data || data.length === 0) return { content: [{ type: 'text' as const, text: 'No hay productos en el catalogo.' }] }
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'get_product',
-    'Get product details from the catalog.',
-    { product_id: z.string().describe('Product ID') },
-    async (args) => {
+  defineTool({
+    name: 'get_product',
+    description: 'Get product details from the catalog.',
+    schema: { product_id: z.string().describe('Product ID') },
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db.from('products').select('*').eq('id', args.product_id).single()
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'update_product',
-    'Update a product in the catalog.',
-    {
+  defineTool({
+    name: 'update_product',
+    description: 'Update a product in the catalog.',
+    schema: {
       product_id: z.string().describe('Product ID'),
       name: z.string().optional(),
       description: z.string().optional(),
@@ -114,7 +113,7 @@ export function registerProductTools(server: McpServer) {
       notes: z.string().optional(),
       active: z.boolean().optional(),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { product_id, ...updates } = args
       const clean = Object.fromEntries(Object.entries(updates).filter(([_, v]) => v !== undefined))
@@ -124,13 +123,13 @@ export function registerProductTools(server: McpServer) {
       const { error } = await db.from('products').update({ ...clean, updated_at: new Date().toISOString() }).eq('id', product_id)
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: `Producto ${product_id} actualizado.` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'add_order_item',
-    'Add a product (from catalog) to an order as a line item.',
-    {
+  defineTool({
+    name: 'add_order_item',
+    description: 'Add a product (from catalog) to an order as a line item.',
+    schema: {
       order_id: z.string().describe('Order ID'),
       product_id: z.string().describe('Product ID from catalog'),
       supplier_id: z.string().describe('Supplier ID — obligatorio, debe existir en product_suppliers'),
@@ -139,7 +138,7 @@ export function registerProductTools(server: McpServer) {
       currency: z.string().default('USD').describe('Currency'),
       notes: z.string().optional().describe('Item notes'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db.from('order_items').insert({
         order_id: args.order_id,
@@ -153,32 +152,32 @@ export function registerProductTools(server: McpServer) {
 
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: `Agregado: ${(data as any).products?.name} x${args.quantity} al pedido.` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_order_items',
-    'List line items for an order, with product details.',
-    { order_id: z.string().describe('Order ID') },
-    async (args) => {
+  defineTool({
+    name: 'list_order_items',
+    description: 'List line items for an order, with product details.',
+    schema: { order_id: z.string().describe('Order ID') },
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db.from('order_items')
         .select('*, products(*)')
         .eq('order_id', args.order_id)
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'delete_order_item',
-    'Remove an item from an order.',
-    { item_id: z.string().describe('Order item ID') },
-    async (args) => {
+  defineTool({
+    name: 'delete_order_item',
+    description: 'Remove an item from an order.',
+    schema: { item_id: z.string().describe('Order item ID') },
+    handler: async (args) => {
       const db = getSupabase()
       const { error } = await db.from('order_items').delete().eq('id', args.item_id)
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: `Item eliminado del pedido.` }] }
-    }
-  )
-}
+    },
+  }),
+]

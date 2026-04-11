@@ -1,14 +1,13 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase } from '@proto/core-mcp'
 import { isValidTransition, type OrderStatus } from '../shared/index.js'
 import { adjustInventoryForStatusChange } from './inventory.js'
 
-export function registerOrderTools(server: McpServer) {
-  server.tool(
-    'create_order',
-    'Create a new import order. Initial status: draft.',
-    {
+export default [
+  defineTool({
+    name: 'create_order',
+    description: 'Create a new import order. Initial status: draft.',
+    schema: {
       company_id: z.string().describe('Company ID'),
       supplier_name: z.string().describe('Supplier name'),
       supplier_contact: z.string().optional().describe('Supplier contact info'),
@@ -26,7 +25,7 @@ export function registerOrderTools(server: McpServer) {
       payment_terms: z.string().optional().describe('Payment terms'),
       estimated_arrival: z.string().optional().describe('Estimated arrival date (YYYY-MM-DD)'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db.from('orders').insert({
         company_id: args.company_id,
@@ -44,7 +43,6 @@ export function registerOrderTools(server: McpServer) {
 
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
 
-      // Log creation event
       await db.from('order_events').insert({
         order_id: data.id,
         event_type: 'created',
@@ -53,21 +51,20 @@ export function registerOrderTools(server: McpServer) {
       })
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'update_order_status',
-    'Update an order\'s status. Enforces valid state transitions.',
-    {
+  defineTool({
+    name: 'update_order_status',
+    description: 'Update an order\'s status. Enforces valid state transitions.',
+    schema: {
       order_id: z.string().describe('Order ID'),
       new_status: z.string().describe('New status'),
       description: z.string().optional().describe('Reason for status change'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
 
-      // Get current order
       const { data: order, error: fetchError } = await db
         .from('orders')
         .select('id, status')
@@ -82,11 +79,12 @@ export function registerOrderTools(server: McpServer) {
       const to = args.new_status as OrderStatus
 
       if (!isValidTransition(from, to)) {
+        const { VALID_TRANSITIONS } = await import('../shared/index.js')
         return {
           content: [{
             type: 'text' as const,
             text: `Invalid transition: ${from} → ${to}. Valid transitions from ${from}: ${
-              (await import('@proto/core-shared')).VALID_TRANSITIONS[from].join(', ') || 'none'
+              VALID_TRANSITIONS[from].join(', ') || 'none'
             }`,
           }],
         }
@@ -101,7 +99,6 @@ export function registerOrderTools(server: McpServer) {
         return { content: [{ type: 'text' as const, text: `Error: ${updateError.message}` }] }
       }
 
-      // Log status change event
       await db.from('order_events').insert({
         order_id: args.order_id,
         event_type: 'status_change',
@@ -109,7 +106,6 @@ export function registerOrderTools(server: McpServer) {
         metadata: { from, to },
       })
 
-      // Auto-adjust inventory
       try {
         await adjustInventoryForStatusChange(args.order_id, from, to)
       } catch (e) {
@@ -117,13 +113,13 @@ export function registerOrderTools(server: McpServer) {
       }
 
       return { content: [{ type: 'text' as const, text: `Order ${args.order_id} updated: ${from} → ${to}` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'update_order',
-    'Actualiza campos editables de un pedido (supplier, incoterm, terminos, totales, ETA, etc). IMPORTANTE: para linkear un proveedor, PASA supplier_id (FK a suppliers), NO solo supplier_name. Si pasas supplier_id, auto-sincroniza supplier_name/contact. Si pasas solo supplier_name sin id (y no hay un supplier con ese nombre), la tool lo rechaza — crealo con create_supplier primero. Registra un order_event con los cambios.',
-    {
+  defineTool({
+    name: 'update_order',
+    description: 'Actualiza campos editables de un pedido (supplier, incoterm, terminos, totales, ETA, etc). IMPORTANTE: para linkear un proveedor, PASA supplier_id (FK a suppliers), NO solo supplier_name. Si pasas supplier_id, auto-sincroniza supplier_name/contact. Si pasas solo supplier_name sin id (y no hay un supplier con ese nombre), la tool lo rechaza — crealo con create_supplier primero. Registra un order_event con los cambios.',
+    schema: {
       order_id: z.string().describe('Order ID'),
       supplier_id: z.string().optional().describe('FK a suppliers. PREFERIDO para linkear proveedor. Si se pasa, sobreescribe supplier_name/contact desde la tabla suppliers.'),
       supplier_name: z.string().optional().describe('Texto libre. Usa SOLO para renombrar un supplier ya linkeado (con supplier_id). No uses este campo para linkear — crea el supplier con create_supplier y pasa supplier_id.'),
@@ -137,14 +133,13 @@ export function registerOrderTools(server: McpServer) {
       country_origin: z.string().optional().describe('ISO alpha-2'),
       description: z.string().optional().describe('Descripcion para el order_event'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { order_id, description, supplier_id, ...rest } = args
       const updates: Record<string, any> = Object.fromEntries(
         Object.entries(rest).filter(([_, v]) => v !== undefined)
       )
 
-      // Si se pasa supplier_id, resolver nombre/contacto desde suppliers
       if (supplier_id) {
         const { data: sup, error: supErr } = await db
           .from('suppliers')
@@ -161,8 +156,6 @@ export function registerOrderTools(server: McpServer) {
           if (contact) updates.supplier_contact = contact
         }
       } else if (updates.supplier_name) {
-        // Se pasó supplier_name sin supplier_id. Validar que el order ya tenga
-        // supplier_id linkeado — si no, forzar al agente a crear el supplier.
         const { data: existing } = await db
           .from('orders')
           .select('supplier_id')
@@ -178,7 +171,6 @@ export function registerOrderTools(server: McpServer) {
         }
       }
 
-      // Mapear incoterm texto -> incoterm_typed tipado cuando aplique
       if (updates.incoterm && ['EXW', 'FOB', 'CIF', 'DDP'].includes(updates.incoterm)) {
         updates.incoterm_typed = updates.incoterm
       }
@@ -207,14 +199,14 @@ export function registerOrderTools(server: McpServer) {
       })
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'get_order',
-    'Get order details and current status.',
-    { order_id: z.string().describe('Order ID') },
-    async (args) => {
+  defineTool({
+    name: 'get_order',
+    description: 'Get order details and current status.',
+    schema: { order_id: z.string().describe('Order ID') },
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db
         .from('orders')
@@ -224,19 +216,19 @@ export function registerOrderTools(server: McpServer) {
 
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_orders',
-    'List orders, optionally filtered by status or company.',
-    {
+  defineTool({
+    name: 'list_orders',
+    description: 'List orders, optionally filtered by status or company.',
+    schema: {
       company_id: z.string().optional().describe('Filter by company'),
       status: z.string().optional().describe('Filter by status'),
       limit: z.number().default(20).describe('Max results'),
       offset: z.number().default(0).describe('Offset for pagination'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       let query = db.from('orders').select('*').order('created_at', { ascending: false })
 
@@ -247,16 +239,16 @@ export function registerOrderTools(server: McpServer) {
       const { data, error } = await query
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'delete_order',
-    'Elimina un pedido en cascada (pagos, muestras, items, eventos, documentos). SOLO permitido cuando el pedido esta en estado "draft" (borrador). Cualquier otro estado es bloqueado para proteger pedidos con historial real.',
-    {
+  defineTool({
+    name: 'delete_order',
+    description: 'Elimina un pedido en cascada (pagos, muestras, items, eventos, documentos). SOLO permitido cuando el pedido esta en estado "draft" (borrador). Cualquier otro estado es bloqueado para proteger pedidos con historial real.',
+    schema: {
       order_id: z.string().describe('Order ID'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
 
       const { data: order, error: fetchError } = await db
@@ -273,8 +265,6 @@ export function registerOrderTools(server: McpServer) {
         return { content: [{ type: 'text' as const, text: `No se puede eliminar: el pedido esta en estado "${order.status}". Solo se pueden eliminar borradores (draft). Para descartar un pedido en otro estado, cambialo a "cancelled".` }] }
       }
 
-      // Cascade delete in dependency order (deepest first)
-      // phase_transitions references order_items, so clean it before items
       const { data: items } = await db.from('order_items').select('id').eq('order_id', args.order_id)
       const itemIds = (items || []).map(i => i.id)
       if (itemIds.length > 0) {
@@ -291,14 +281,14 @@ export function registerOrderTools(server: McpServer) {
 
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: `Pedido ${args.order_id} eliminado (con pagos, muestras, items, eventos y documentos asociados).` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'get_order_timeline',
-    'Get the full event history for an order.',
-    { order_id: z.string().describe('Order ID') },
-    async (args) => {
+  defineTool({
+    name: 'get_order_timeline',
+    description: 'Get the full event history for an order.',
+    schema: { order_id: z.string().describe('Order ID') },
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db
         .from('order_events')
@@ -308,6 +298,6 @@ export function registerOrderTools(server: McpServer) {
 
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
-}
+    },
+  }),
+]

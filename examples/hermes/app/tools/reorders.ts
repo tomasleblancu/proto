@@ -1,12 +1,11 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase } from '@proto/core-mcp'
 
-export function registerReorderTools(server: McpServer) {
-  server.tool(
-    'create_reorder_rule',
-    'Define a reorder rule for a product with a known supplier.',
-    {
+export default [
+  defineTool({
+    name: 'create_reorder_rule',
+    description: 'Define a reorder rule for a product with a known supplier.',
+    schema: {
       company_id: z.string().describe('Company ID'),
       supplier_name: z.string().describe('Supplier name'),
       product_description: z.string().describe('Product description'),
@@ -14,7 +13,7 @@ export function registerReorderTools(server: McpServer) {
       frequency_days: z.number().describe('Reorder frequency in days'),
       lead_time_days: z.number().default(0).describe('Lead time in days'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const nextDate = new Date()
       nextDate.setDate(nextDate.getDate() + args.frequency_days)
@@ -32,16 +31,16 @@ export function registerReorderTools(server: McpServer) {
 
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: `Reorder rule created: ${args.product_description} every ${args.frequency_days} days. Next order: ${nextDate.toISOString().split('T')[0]}` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'check_reorders',
-    'Check which products are due for reorder based on their rules.',
-    {
+  defineTool({
+    name: 'check_reorders',
+    description: 'Check which products are due for reorder based on their rules.',
+    schema: {
       company_id: z.string().optional().describe('Filter by company'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const today = new Date().toISOString().split('T')[0]
 
@@ -64,19 +63,18 @@ export function registerReorderTools(server: McpServer) {
       ).join('\n')
 
       return { content: [{ type: 'text' as const, text: `Products due for reorder:\n${summary}` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'trigger_reorder',
-    'Create a new order from an existing reorder rule. Updates the rule\'s last_ordered_at and next_order_date.',
-    {
+  defineTool({
+    name: 'trigger_reorder',
+    description: 'Create a new order from an existing reorder rule. Updates the rule\'s last_ordered_at and next_order_date.',
+    schema: {
       rule_id: z.string().describe('Reorder rule ID'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
 
-      // Get the rule
       const { data: rule, error: ruleError } = await db
         .from('reorder_rules')
         .select('*')
@@ -91,7 +89,6 @@ export function registerReorderTools(server: McpServer) {
         return { content: [{ type: 'text' as const, text: 'Error: Reorder rule is inactive' }] }
       }
 
-      // Create new order from rule
       const { data: order, error: orderError } = await db.from('orders').insert({
         company_id: rule.company_id,
         supplier_name: rule.supplier_name,
@@ -103,7 +100,6 @@ export function registerReorderTools(server: McpServer) {
         return { content: [{ type: 'text' as const, text: `Error creating order: ${orderError.message}` }] }
       }
 
-      // Update rule: last_ordered_at = now, next_order_date = now + frequency_days
       const now = new Date()
       const nextDate = new Date()
       nextDate.setDate(now.getDate() + rule.frequency_days)
@@ -113,7 +109,6 @@ export function registerReorderTools(server: McpServer) {
         next_order_date: nextDate.toISOString().split('T')[0],
       }).eq('id', args.rule_id)
 
-      // Log event
       await db.from('order_events').insert({
         order_id: order.id,
         event_type: 'created_from_reorder',
@@ -127,17 +122,17 @@ export function registerReorderTools(server: McpServer) {
           text: `Reorder triggered. New order ${order.id} created for ${rule.product_description} (qty: ${rule.quantity}). Next reorder: ${nextDate.toISOString().split('T')[0]}`,
         }],
       }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_reorder_rules',
-    'List all reorder rules, optionally filtered by company.',
-    {
+  defineTool({
+    name: 'list_reorder_rules',
+    description: 'List all reorder rules, optionally filtered by company.',
+    schema: {
       company_id: z.string().optional().describe('Filter by company'),
       active_only: z.boolean().default(true).describe('Only show active rules'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       let query = db.from('reorder_rules').select('*').order('next_order_date', { ascending: true })
 
@@ -147,6 +142,6 @@ export function registerReorderTools(server: McpServer) {
       const { data, error } = await query
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
-}
+    },
+  }),
+]

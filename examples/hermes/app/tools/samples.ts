@@ -1,14 +1,12 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
 import { SAMPLE_STATUSES, isValidSampleTransition, type SampleStatus } from '../shared/index.js'
-import { err, json } from '@proto/core-mcp'
 
-export function registerSampleTools(server: McpServer) {
-  server.tool(
-    'create_sample',
-    'Crea una muestra. El supplier debe existir en DB primero.',
-    {
+export default [
+  defineTool({
+    name: 'create_sample',
+    description: 'Crea una muestra. El supplier debe existir en DB primero.',
+    schema: {
       company_id: z.string(),
       supplier_id: z.string(),
       description: z.string(),
@@ -19,23 +17,23 @@ export function registerSampleTools(server: McpServer) {
       shipping_method: z.enum(['courier', 'with_main_shipment', 'hand_carry']).optional(),
       order_id: z.string().optional(),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data: supplier } = await db.from('suppliers').select('id').eq('id', args.supplier_id).single()
       if (!supplier) return err('Supplier no existe — creá el supplier antes de la muestra')
       const { data, error } = await db.from('samples').insert({ ...args, status: 'requested' }).select().single()
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'update_sample_status',
-    'Cambia el status de una muestra validando la transicion.',
-    {
+  defineTool({
+    name: 'update_sample_status',
+    description: 'Cambia el status de una muestra validando la transicion.',
+    schema: {
       sample_id: z.string(),
       to_status: z.enum(SAMPLE_STATUSES),
     },
-    async ({ sample_id, to_status }) => {
+    handler: async ({ sample_id, to_status }) => {
       const db = getSupabase()
       const { data: s } = await db.from('samples').select('status').eq('id', sample_id).single()
       if (!s) return err('Muestra no encontrada')
@@ -46,19 +44,19 @@ export function registerSampleTools(server: McpServer) {
       if (to_status === 'received') patch.received_at = new Date().toISOString()
       const { data, error } = await db.from('samples').update(patch).eq('id', sample_id).select().single()
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'evaluate_sample',
-    'Registra el resultado de evaluacion de una muestra.',
-    {
+  defineTool({
+    name: 'evaluate_sample',
+    description: 'Registra el resultado de evaluacion de una muestra.',
+    schema: {
       sample_id: z.string(),
       result: z.enum(['approved', 'rejected', 'needs_revision']),
       notes: z.string().optional(),
       evaluated_by: z.string().optional(),
     },
-    async ({ sample_id, result, notes, evaluated_by }) => {
+    handler: async ({ sample_id, result, notes, evaluated_by }) => {
       const db = getSupabase()
       const { data, error } = await db.from('samples').update({
         status: result,
@@ -68,36 +66,36 @@ export function registerSampleTools(server: McpServer) {
         evaluated_at: new Date().toISOString(),
       }).eq('id', sample_id).select().single()
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_samples',
-    'Lista muestras con filtros opcionales.',
-    {
+  defineTool({
+    name: 'list_samples',
+    description: 'Lista muestras con filtros opcionales.',
+    schema: {
       company_id: z.string(),
       status: z.enum(SAMPLE_STATUSES).optional(),
       supplier_id: z.string().optional(),
     },
-    async ({ company_id, status, supplier_id }) => {
+    handler: async ({ company_id, status, supplier_id }) => {
       const db = getSupabase()
       let q = db.from('samples').select('*').eq('company_id', company_id)
       if (status) q = q.eq('status', status)
       if (supplier_id) q = q.eq('supplier_id', supplier_id)
       const { data, error } = await q.order('created_at', { ascending: false })
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'promote_sample_to_item',
-    'Convierte una muestra aprobada en un order_item dentro de un pedido. Si pasas source_item_id, ese item original (de sourcing) se cancela automaticamente y queda linkeado al nuevo via metadata.replaced_by.',
-    {
+  defineTool({
+    name: 'promote_sample_to_item',
+    description: 'Convierte una muestra aprobada en un order_item dentro de un pedido. Si pasas source_item_id, ese item original (de sourcing) se cancela automaticamente y queda linkeado al nuevo via metadata.replaced_by.',
+    schema: {
       sample_id: z.string(),
       order_id: z.string(),
       source_item_id: z.string().optional().describe('item original de sourcing que se reemplaza'),
     },
-    async ({ sample_id, order_id, source_item_id }) => {
+    handler: async ({ sample_id, order_id, source_item_id }) => {
       const db = getSupabase()
       const { data: s } = await db.from('samples').select('*').eq('id', sample_id).single()
       if (!s) return err('Muestra no encontrada')
@@ -131,6 +129,6 @@ export function registerSampleTools(server: McpServer) {
       }
 
       return json(item)
-    }
-  )
-}
+    },
+  }),
+]

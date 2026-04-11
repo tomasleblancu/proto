@@ -1,8 +1,6 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase, agent, agentErr } from '@proto/core-mcp'
 import { PAYMENT_TYPES, PAYMENT_STATUSES, DEFAULT_PAYEE, type PaymentType } from '../shared/index.js'
-import { agent, agentErr } from '@proto/core-mcp'
 
 const COSTING_MAP: Record<string, string> = {
   deposit: 'fob',
@@ -13,11 +11,11 @@ const COSTING_MAP: Record<string, string> = {
   transport: 'transport',
 }
 
-export function registerPaymentTools(server: McpServer) {
-  server.tool(
-    'record_payment',
-    'Registra un pago vinculado a un pedido. Opcionalmente lo enlaza a un documento que lo justifica.',
-    {
+export default [
+  defineTool({
+    name: 'record_payment',
+    description: 'Registra un pago vinculado a un pedido. Opcionalmente lo enlaza a un documento que lo justifica.',
+    schema: {
       company_id: z.string(),
       order_id: z.string(),
       type: z.enum(PAYMENT_TYPES),
@@ -31,7 +29,7 @@ export function registerPaymentTools(server: McpServer) {
       linked_document_id: z.string().optional(),
       notes: z.string().optional(),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const payee = args.payee ?? DEFAULT_PAYEE[args.type as PaymentType]
       const { data, error } = await db.from('payments').insert({ ...args, payee }).select().single()
@@ -53,13 +51,13 @@ export function registerPaymentTools(server: McpServer) {
         hint: `Actualiza costeo actual con upsert_costing: ${args.type} → actual.${costingField}. `
             + (args.currency !== 'USD' ? `Convierte ${args.currency} a USD usando fx_rate antes de guardar en el costeo.` : ''),
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'update_payment',
-    'Actualiza un pago existente (monto, moneda, estado, tipo, etc).',
-    {
+  defineTool({
+    name: 'update_payment',
+    description: 'Actualiza un pago existente (monto, moneda, estado, tipo, etc).',
+    schema: {
       payment_id: z.string(),
       type: z.enum(PAYMENT_TYPES).optional(),
       amount: z.number().optional(),
@@ -70,7 +68,7 @@ export function registerPaymentTools(server: McpServer) {
       reference: z.string().optional(),
       notes: z.string().optional(),
     },
-    async ({ payment_id, ...patch }) => {
+    handler: async ({ payment_id, ...patch }) => {
       const db = getSupabase()
       const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
       if (Object.keys(clean).length === 0) return agentErr('Nada que actualizar')
@@ -88,14 +86,14 @@ export function registerPaymentTools(server: McpServer) {
           payee: data.payee,
         },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'delete_payment',
-    'Elimina un pago registrado por error.',
-    { payment_id: z.string() },
-    async ({ payment_id }) => {
+  defineTool({
+    name: 'delete_payment',
+    description: 'Elimina un pago registrado por error.',
+    schema: { payment_id: z.string() },
+    handler: async ({ payment_id }) => {
       const db = getSupabase()
       const { error } = await db.from('payments').delete().eq('id', payment_id)
       if (error) return agentErr(`No se pudo eliminar pago: ${error.message}`)
@@ -103,14 +101,14 @@ export function registerPaymentTools(server: McpServer) {
         summary: `Pago ${payment_id} eliminado.`,
         data: { deleted_id: payment_id },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_payments',
-    'Lista pagos de un pedido.',
-    { order_id: z.string() },
-    async ({ order_id }) => {
+  defineTool({
+    name: 'list_payments',
+    description: 'Lista pagos de un pedido.',
+    schema: { order_id: z.string() },
+    handler: async ({ order_id }) => {
       const db = getSupabase()
       const { data, error } = await db
         .from('payments')
@@ -126,6 +124,6 @@ export function registerPaymentTools(server: McpServer) {
         summary: `${data.length} pago(s) para pedido ${order_id} — pagado: ${paid}, pendiente: ${pending}`,
         data: { payments: data, total_paid: paid, total_pending: pending },
       })
-    }
-  )
-}
+    },
+  }),
+]

@@ -1,19 +1,17 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase, agent, agentErr } from '@proto/core-mcp'
 import { COSTING_FIELDS, type CostingBreakdown, computeEstimated, computeActualFromPayments, mergeActual, type CostingDefault, type PaymentRow } from '@proto/core-shared'
 import { detectTlcRequirement } from '../shared/index.js'
-import { agent, agentErr } from '@proto/core-mcp'
 
 const breakdownSchema = z.object(
   Object.fromEntries(COSTING_FIELDS.map(f => [f, z.number().optional()]))
 ).passthrough()
 
-export function registerCostingTools(server: McpServer) {
-  server.tool(
-    'upsert_costing',
-    'Crea o actualiza el costeo de un pedido. Por defecto es a nivel pedido (consolidado). Pasa item_id solo si necesitas costeo por item individual. Usa type "estimated" para el preliminar y "actual" para el real. Cada llamada hace merge.',
-    {
+export default [
+  defineTool({
+    name: 'upsert_costing',
+    description: 'Crea o actualiza el costeo de un pedido. Por defecto es a nivel pedido (consolidado). Pasa item_id solo si necesitas costeo por item individual. Usa type "estimated" para el preliminar y "actual" para el real. Cada llamada hace merge.',
+    schema: {
       company_id: z.string(),
       order_id: z.string(),
       item_id: z.string().optional().describe('Omitir para costeo consolidado del pedido. Pasar solo para costeo por item individual.'),
@@ -23,7 +21,7 @@ export function registerCostingTools(server: McpServer) {
       fx_rate: z.number().optional().describe('Tipo de cambio USD→CLP al momento del costeo'),
       notes: z.string().optional(),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { company_id, order_id, item_id, type, breakdown, currency, fx_rate, notes } = args
 
@@ -70,20 +68,19 @@ export function registerCostingTools(server: McpServer) {
           ? 'IVA no se suma a landed_total. Recalcula landed_total = suma de todos los campos actual SIN iva.'
           : undefined,
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'get_costing',
-    'Obtiene el costeo de un pedido (consolidado) o de un item individual. Sin item_id devuelve el costeo consolidado del pedido.',
-    {
+  defineTool({
+    name: 'get_costing',
+    description: 'Obtiene el costeo de un pedido (consolidado) o de un item individual. Sin item_id devuelve el costeo consolidado del pedido.',
+    schema: {
       order_id: z.string().optional().describe('ID del pedido. Requerido si no se pasa item_id.'),
       item_id: z.string().optional().describe('ID del item. Si se omite, devuelve el costeo consolidado del pedido.'),
     },
-    async ({ order_id, item_id }) => {
+    handler: async ({ order_id, item_id }) => {
       const db = getSupabase()
 
-      // Resolve order_id if only item_id given
       let resolvedOrderId = order_id
       if (item_id && !order_id) {
         const { data: it } = await db.from('order_items').select('order_id').eq('id', item_id).single()
@@ -92,7 +89,6 @@ export function registerCostingTools(server: McpServer) {
 
       if (!resolvedOrderId && !item_id) return agentErr('Debes pasar order_id o item_id')
 
-      // Get persisted costing
       let costingQuery = db.from('costings').select('id, order_id, item_id, estimated, actual, currency, fx_rate')
       if (item_id) {
         costingQuery = costingQuery.eq('item_id', item_id)
@@ -104,7 +100,6 @@ export function registerCostingTools(server: McpServer) {
       const persistedActual = (data?.actual || {}) as CostingBreakdown
       let estimated = (data?.estimated || {}) as CostingBreakdown
 
-      // Compute actual from payments + merge with persisted overrides
       const { data: paymentsData } = await db
         .from('payments')
         .select('type, amount, currency, status')
@@ -113,7 +108,6 @@ export function registerCostingTools(server: McpServer) {
       const fromPayments = computeActualFromPayments(payments, data?.currency || 'USD', data?.fx_rate ?? null)
       const actual = mergeActual(fromPayments, persistedActual)
 
-      // If no persisted estimated, compute dynamically (same as widget)
       if (Object.keys(estimated).length === 0 && resolvedOrderId) {
         const [itemsRes, defaultsRes, orderRes, samplesRes] = await Promise.all([
           db.from('order_items').select('quantity, unit_price, cbm_unit').eq('order_id', resolvedOrderId),
@@ -135,7 +129,6 @@ export function registerCostingTools(server: McpServer) {
         estimated = computeEstimated(items, defaults, hasTlc, samplesCost)
       }
 
-      // Compute delta
       const delta: CostingBreakdown = {}
       const allKeys = new Set([...Object.keys(estimated), ...Object.keys(actual)])
       for (const key of allKeys) {
@@ -161,14 +154,14 @@ export function registerCostingTools(server: McpServer) {
           fx_rate: data?.fx_rate ?? null,
         },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_costings',
-    'Lista los costeos de todos los items de un pedido.',
-    { order_id: z.string() },
-    async ({ order_id }) => {
+  defineTool({
+    name: 'list_costings',
+    description: 'Lista los costeos de todos los items de un pedido.',
+    schema: { order_id: z.string() },
+    handler: async ({ order_id }) => {
       const db = getSupabase()
       const { data, error } = await db
         .from('costings')
@@ -191,14 +184,14 @@ export function registerCostingTools(server: McpServer) {
         summary: `${costings.length} costeo(s) para pedido ${order_id}`,
         data: { costings },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'get_costing_defaults',
-    'Obtiene los valores de referencia para costeo preliminar (flete, arancel, IVA, puerto, agente, etc). Configurados en /admin. Usarlos como base para estimar landed cost.',
-    {},
-    async () => {
+  defineTool({
+    name: 'get_costing_defaults',
+    description: 'Obtiene los valores de referencia para costeo preliminar (flete, arancel, IVA, puerto, agente, etc). Configurados en /admin. Usarlos como base para estimar landed cost.',
+    schema: {},
+    handler: async () => {
       const db = getSupabase()
       const { data, error } = await db
         .from('costing_defaults')
@@ -209,6 +202,6 @@ export function registerCostingTools(server: McpServer) {
         summary: `${data.length} default(s) de costeo cargados`,
         data: { defaults: data },
       })
-    }
-  )
-}
+    },
+  }),
+]

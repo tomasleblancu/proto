@@ -1,6 +1,5 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase, agent, agentErr } from '@proto/core-mcp'
 import {
   PHASES,
   PHASE_STEPS,
@@ -9,7 +8,6 @@ import {
   type Phase,
 } from '@proto/core-shared'
 import { detectTlcRequirement } from '../shared/index.js'
-import { agent, agentErr } from '@proto/core-mcp'
 import { isValidStep } from './_hermes-helpers.js'
 
 const PHASE_ORDER = PHASES as readonly Phase[]
@@ -56,14 +54,12 @@ function flagsSummary(item: any): string {
   return flags.length ? ` [${flags.join(', ')}]` : ''
 }
 
-// ── Tools ──
-
-export function registerWorkflowTools(server: McpServer) {
-  server.tool(
-    'get_item_state',
-    'Snapshot del state machine para un item: fase, sub-paso, flags, y si requiere aprobacion humana.',
-    { item_id: z.string() },
-    async ({ item_id }) => {
+export default [
+  defineTool({
+    name: 'get_item_state',
+    description: 'Snapshot del state machine para un item: fase, sub-paso, flags, y si requiere aprobacion humana.',
+    schema: { item_id: z.string() },
+    handler: async ({ item_id }) => {
       const db = getSupabase()
       const { data: item, error } = await db
         .from('order_items')
@@ -95,18 +91,18 @@ export function registerWorkflowTools(server: McpServer) {
         },
         hint: buildStepHint(phase, item.current_step),
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_items_by_phase',
-    'Lista items de una empresa, opcionalmente filtrando por fase.',
-    {
+  defineTool({
+    name: 'list_items_by_phase',
+    description: 'Lista items de una empresa, opcionalmente filtrando por fase.',
+    schema: {
       company_id: z.string(),
       phase: z.enum(PHASES).optional(),
       include_cancelled: z.boolean().default(false),
     },
-    async ({ company_id, phase, include_cancelled }) => {
+    handler: async ({ company_id, phase, include_cancelled }) => {
       const db = getSupabase()
       let q = db
         .from('order_items')
@@ -131,13 +127,13 @@ export function registerWorkflowTools(server: McpServer) {
         summary: `${items.length} item(s)${phase ? ` en ${phase}` : ''} para empresa ${company_id}`,
         data: { items },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'advance_step',
-    'Avanza un item al siguiente sub-paso o a una nueva fase. Valida transicion legal.',
-    {
+  defineTool({
+    name: 'advance_step',
+    description: 'Avanza un item al siguiente sub-paso o a una nueva fase. Valida transicion legal.',
+    schema: {
       item_id: z.string(),
       to_phase: z.enum(PHASES),
       to_step: z.string(),
@@ -145,7 +141,7 @@ export function registerWorkflowTools(server: McpServer) {
       reason: z.string().optional(),
       evidence: z.record(z.string(), z.any()).optional(),
     },
-    async ({ item_id, to_phase, to_step, actor, reason, evidence }) => {
+    handler: async ({ item_id, to_phase, to_step, actor, reason, evidence }) => {
       const db = getSupabase()
       const { data: item, error: e1 } = await db
         .from('order_items')
@@ -194,14 +190,14 @@ export function registerWorkflowTools(server: McpServer) {
         data: { item_id, phase: to_phase, step: to_step },
         hint: buildStepHint(to_phase as Phase, to_step),
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'block_item',
-    'Marca un item como bloqueado con razon.',
-    { item_id: z.string(), reason: z.string() },
-    async ({ item_id, reason }) => {
+  defineTool({
+    name: 'block_item',
+    description: 'Marca un item como bloqueado con razon.',
+    schema: { item_id: z.string(), reason: z.string() },
+    handler: async ({ item_id, reason }) => {
       const db = getSupabase()
       const { error } = await db.from('order_items')
         .update({ blocked_reason: reason, updated_at: new Date().toISOString() })
@@ -211,14 +207,14 @@ export function registerWorkflowTools(server: McpServer) {
         summary: `Item ${item_id} bloqueado: ${reason}`,
         data: { item_id, blocked_reason: reason },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'unblock_item',
-    'Quita el bloqueo de un item.',
-    { item_id: z.string() },
-    async ({ item_id }) => {
+  defineTool({
+    name: 'unblock_item',
+    description: 'Quita el bloqueo de un item.',
+    schema: { item_id: z.string() },
+    handler: async ({ item_id }) => {
       const db = getSupabase()
       const { error } = await db.from('order_items')
         .update({ blocked_reason: null, updated_at: new Date().toISOString() })
@@ -229,14 +225,14 @@ export function registerWorkflowTools(server: McpServer) {
         data: { item_id },
         hint: 'Item puede avanzar. Revisa get_item_state para ver posicion actual.',
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'hold_item',
-    'Pausa un item (on_hold=true).',
-    { item_id: z.string() },
-    async ({ item_id }) => {
+  defineTool({
+    name: 'hold_item',
+    description: 'Pausa un item (on_hold=true).',
+    schema: { item_id: z.string() },
+    handler: async ({ item_id }) => {
       const db = getSupabase()
       const { error } = await db.from('order_items')
         .update({ on_hold: true, updated_at: new Date().toISOString() })
@@ -246,14 +242,14 @@ export function registerWorkflowTools(server: McpServer) {
         summary: `Item ${item_id} pausado.`,
         data: { item_id, on_hold: true },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'resume_item',
-    'Reanuda un item pausado.',
-    { item_id: z.string() },
-    async ({ item_id }) => {
+  defineTool({
+    name: 'resume_item',
+    description: 'Reanuda un item pausado.',
+    schema: { item_id: z.string() },
+    handler: async ({ item_id }) => {
       const db = getSupabase()
       const { error } = await db.from('order_items')
         .update({ on_hold: false, updated_at: new Date().toISOString() })
@@ -264,14 +260,14 @@ export function registerWorkflowTools(server: McpServer) {
         data: { item_id, on_hold: false },
         hint: 'Item puede avanzar. Revisa get_item_state para ver posicion actual.',
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'cancel_item',
-    'Cancela un item (terminal).',
-    { item_id: z.string(), reason: z.string().optional() },
-    async ({ item_id, reason }) => {
+  defineTool({
+    name: 'cancel_item',
+    description: 'Cancela un item (terminal).',
+    schema: { item_id: z.string(), reason: z.string().optional() },
+    handler: async ({ item_id, reason }) => {
       const db = getSupabase()
       const { data: item } = await db.from('order_items')
         .select('company_id, current_phase, current_step')
@@ -298,17 +294,17 @@ export function registerWorkflowTools(server: McpServer) {
         summary: `Item ${item_id} cancelado.`,
         data: { item_id, cancelled: true },
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'request_human_approval',
-    'Marca un item como esperando aprobacion humana. La UI debe llamar advance_step con actor=user para confirmar.',
-    {
+  defineTool({
+    name: 'request_human_approval',
+    description: 'Marca un item como esperando aprobacion humana. La UI debe llamar advance_step con actor=user para confirmar.',
+    schema: {
       item_id: z.string(),
       packet: z.record(z.string(), z.any()).describe('Datos a presentar al humano (resumen de costos, docs, etc.)'),
     },
-    async ({ item_id, packet }) => {
+    handler: async ({ item_id, packet }) => {
       const db = getSupabase()
       const { data: item } = await db.from('order_items')
         .select('company_id, current_phase, current_step')
@@ -335,14 +331,14 @@ export function registerWorkflowTools(server: McpServer) {
         data: { item_id, phase: item.current_phase, step: item.current_step },
         hint: 'NO llames advance_step. El usuario aprobara via UI, que llama advance_step con actor="user".',
       })
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'detect_tlc_requirement',
-    'Dado un pais origen (ISO alpha-2), devuelve si requiere form_f, certificate_of_origin, o ninguno.',
-    { country_code: z.string() },
-    async ({ country_code }) => {
+  defineTool({
+    name: 'detect_tlc_requirement',
+    description: 'Dado un pais origen (ISO alpha-2), devuelve si requiere form_f, certificate_of_origin, o ninguno.',
+    schema: { country_code: z.string() },
+    handler: async ({ country_code }) => {
       const result = detectTlcRequirement(country_code)
       return agent({
         summary: `${country_code}: ${result === 'none' ? 'sin TLC, arancel general' : `requiere ${result}`}`,
@@ -351,6 +347,6 @@ export function registerWorkflowTools(server: McpServer) {
           ? `En documentation, adjunta ${result} con attach_document(kind="${result}").`
           : 'Sin TLC. Arancel general 6% aplica. Anotar en metadata del item.',
       })
-    }
-  )
-}
+    },
+  }),
+]

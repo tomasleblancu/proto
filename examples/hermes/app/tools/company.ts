@@ -1,16 +1,11 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase } from '@proto/core-mcp'
 
-// Session context from gateway env
 const COMPANY_ID = () => process.env.COMPANY_ID || ''
 
-// Resolve user: could be email or UUID
 async function resolveUserId(): Promise<string> {
   const raw = process.env.USER_ID || ''
-  // If it looks like a UUID, return as-is
   if (/^[0-9a-f]{8}-/.test(raw)) return raw
-  // If it's an email, look up the auth user
   if (raw.includes('@')) {
     const db = getSupabase()
     const { data } = await db.auth.admin.listUsers()
@@ -20,12 +15,15 @@ async function resolveUserId(): Promise<string> {
   return raw
 }
 
-export function registerCompanyTools(server: McpServer) {
-  server.tool(
-    'get_profile',
-    'Get the current user\'s profile and company info.',
-    {},
-    async () => {
+// COMPANY_ID is consumed in other tools; keep exported for them.
+void COMPANY_ID
+
+export default [
+  defineTool({
+    name: 'get_profile',
+    description: 'Get the current user\'s profile and company info.',
+    schema: {},
+    handler: async () => {
       const db = getSupabase()
       const userId = await resolveUserId()
       if (!userId) return { content: [{ type: 'text' as const, text: 'Error: no se pudo identificar al usuario' }] }
@@ -50,19 +48,19 @@ export function registerCompanyTools(server: McpServer) {
         companies,
         completitud: missing.length === 0 ? '100%' : `Faltan: ${missing.join(', ')}`,
       }, null, 2) }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'update_profile',
-    'Update the current user\'s profile (name, role/title, phone). User ID is resolved automatically from the session.',
-    {
+  defineTool({
+    name: 'update_profile',
+    description: 'Update the current user\'s profile (name, role/title, phone). User ID is resolved automatically from the session.',
+    schema: {
       full_name: z.string().optional().describe('Full name'),
       role_title: z.string().optional().describe('Role or job title'),
       phone: z.string().optional().describe('Phone number'),
       onboarding_completed: z.boolean().optional().describe('Mark onboarding as completed'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const userId = await resolveUserId()
       if (!userId) return { content: [{ type: 'text' as const, text: 'Error: no se pudo identificar al usuario' }] }
@@ -83,13 +81,13 @@ export function registerCompanyTools(server: McpServer) {
 
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: `Perfil actualizado: ${args.full_name || ''} (${args.role_title || ''})` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'create_company',
-    'Create a new company. The owner is automatically set to the current user.',
-    {
+  defineTool({
+    name: 'create_company',
+    description: 'Create a new company. The owner is automatically set to the current user.',
+    schema: {
       name: z.string().describe('Company name'),
       rut: z.string().optional().describe('Chilean RUT (e.g. 76.123.456-7)'),
       contact_email: z.string().optional().describe('Contact email'),
@@ -101,7 +99,7 @@ export function registerCompanyTools(server: McpServer) {
       country: z.string().optional().describe('Country code (CL, PE, AR, ...)'),
       import_experience: z.string().optional().describe('Import experience: nuevo | ocasional | frecuente'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const userId = await resolveUserId()
       if (!userId) return { content: [{ type: 'text' as const, text: 'Error: no se pudo identificar al usuario' }] }
@@ -122,14 +120,14 @@ export function registerCompanyTools(server: McpServer) {
 
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: `Empresa creada: ${data.name} (ID: ${data.id})` }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_companies',
-    'List companies owned by the current user.',
-    {},
-    async () => {
+  defineTool({
+    name: 'list_companies',
+    description: 'List companies owned by the current user.',
+    schema: {},
+    handler: async () => {
       const db = getSupabase()
       const userId = await resolveUserId()
       let query = db.from('companies').select('*').order('created_at', { ascending: false })
@@ -139,18 +137,18 @@ export function registerCompanyTools(server: McpServer) {
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       if (!data || data.length === 0) return { content: [{ type: 'text' as const, text: 'No hay empresas registradas.' }] }
       return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'add_company_user',
-    'Add a user (client) to a company.',
-    {
+  defineTool({
+    name: 'add_company_user',
+    description: 'Add a user (client) to a company.',
+    schema: {
       company_id: z.string().describe('Company ID'),
       user_email: z.string().describe('Email of the user to add'),
       role: z.enum(['admin', 'client']).default('client').describe('Role in the company'),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data: users } = await db.auth.admin.listUsers()
       const user = users?.users?.find(u => u.email === args.user_email)
@@ -167,6 +165,6 @@ export function registerCompanyTools(server: McpServer) {
 
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
       return { content: [{ type: 'text' as const, text: `Usuario ${args.user_email} agregado como ${args.role}.` }] }
-    }
-  )
-}
+    },
+  }),
+]

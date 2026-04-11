@@ -1,13 +1,11 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
-import { ok, err, json } from '@proto/core-mcp'
+import { defineTool, getSupabase, ok, err, json } from '@proto/core-mcp'
 
-export function registerSupplierTools(server: McpServer) {
-  server.tool(
-    'create_supplier',
-    'Crea un proveedor para una empresa. Requerido antes de crear muestras.',
-    {
+export default [
+  defineTool({
+    name: 'create_supplier',
+    description: 'Crea un proveedor para una empresa. Requerido antes de crear muestras.',
+    schema: {
       company_id: z.string(),
       name: z.string(),
       country_code: z.string().optional(),
@@ -17,17 +15,17 @@ export function registerSupplierTools(server: McpServer) {
       website: z.string().optional(),
       notes: z.string().optional(),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db.from('suppliers').insert(args).select().single()
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'link_product_supplier',
-    'Vincula un proveedor a un producto (multi-proveedor). Permite registrar precio, MOQ y lead time.',
-    {
+  defineTool({
+    name: 'link_product_supplier',
+    description: 'Vincula un proveedor a un producto (multi-proveedor). Permite registrar precio, MOQ y lead time.',
+    schema: {
       product_id: z.string(),
       supplier_id: z.string(),
       company_id: z.string(),
@@ -38,37 +36,37 @@ export function registerSupplierTools(server: McpServer) {
       is_preferred: z.boolean().default(false).describe('Marcar como proveedor preferido'),
       notes: z.string().optional(),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db.from('product_suppliers').insert(args).select('*, suppliers(name)').single()
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'unlink_product_supplier',
-    'Desvincula un proveedor de un producto.',
-    {
+  defineTool({
+    name: 'unlink_product_supplier',
+    description: 'Desvincula un proveedor de un producto.',
+    schema: {
       product_id: z.string(),
       supplier_id: z.string(),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { error } = await db.from('product_suppliers')
         .delete()
         .eq('product_id', args.product_id)
         .eq('supplier_id', args.supplier_id)
       return error ? err(error.message) : ok('Proveedor desvinculado del producto.')
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'list_product_suppliers',
-    'Lista los proveedores vinculados a un producto, con precio, MOQ y lead time.',
-    {
+  defineTool({
+    name: 'list_product_suppliers',
+    description: 'Lista los proveedores vinculados a un producto, con precio, MOQ y lead time.',
+    schema: {
       product_id: z.string(),
     },
-    async (args) => {
+    handler: async (args) => {
       const db = getSupabase()
       const { data, error } = await db.from('product_suppliers')
         .select('*, suppliers(id, name, country_code, contact_email, website)')
@@ -76,6 +74,6 @@ export function registerSupplierTools(server: McpServer) {
         .order('is_preferred', { ascending: false })
         .order('created_at')
       return error ? err(error.message) : json(data)
-    }
-  )
-}
+    },
+  }),
+]
