@@ -1,9 +1,14 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { PlusIcon, RotateCcwIcon, SunIcon, MoonIcon, MonitorIcon, UserIcon, LogOutIcon, Building2Icon, ChevronDownIcon, CheckIcon, XIcon, HomeIcon, SettingsIcon, ShoppingCartIcon, LayoutGridIcon } from 'lucide-react'
-import { useTheme, type Theme } from '@/hooks/useTheme'
-import { WIDGET_CATALOG } from './catalog'
+import { useState, type ReactNode } from 'react'
+import { Button } from '../ui/button'
+import { PlusIcon, RotateCcwIcon, SunIcon, MoonIcon, MonitorIcon, UserIcon, LogOutIcon, Building2Icon, ChevronDownIcon, CheckIcon, XIcon, HomeIcon, SettingsIcon, LayoutGridIcon } from 'lucide-react'
+import { useTheme, type Theme } from '../../hooks/useTheme'
 import type { ActiveEntity, WidgetType } from './types'
+
+interface CatalogEntry {
+  type: WidgetType
+  title: string
+  icon: string
+}
 
 interface Props {
   widgetCount: number
@@ -12,9 +17,8 @@ interface Props {
   onDeactivateEntity: (() => void) | undefined
   onReset: () => void
   onAddWidget: (type: WidgetType) => void
+  widgetCatalog: CatalogEntry[]
   onOpenSettings?: () => void
-  onOpenCart?: () => void
-  cartCount?: number
   editingLayout?: boolean
   onToggleEditLayout?: () => void
   openEntities?: ActiveEntity[]
@@ -26,9 +30,16 @@ interface Props {
   setCompanyId?: (id: string) => void
   onSignOut?: () => void
   userEmail?: string
+  rightActions?: ReactNode
 }
 
-export function Toolbar({ widgetCount, cockpitMode, activeEntity, onDeactivateEntity, onReset, onAddWidget, onOpenSettings, onOpenCart, cartCount = 0, editingLayout, onToggleEditLayout, openEntities, onSelectEntity, onCloseTab, role, companies, effectiveCompanyId, setCompanyId, onSignOut, userEmail }: Props) {
+export function Toolbar({
+  widgetCount, cockpitMode, activeEntity, onDeactivateEntity, onReset, onAddWidget,
+  widgetCatalog, onOpenSettings, editingLayout, onToggleEditLayout,
+  openEntities, onSelectEntity, onCloseTab,
+  role, companies, effectiveCompanyId, setCompanyId, onSignOut, userEmail,
+  rightActions,
+}: Props) {
   const [showCatalog, setShowCatalog] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showCompany, setShowCompany] = useState(false)
@@ -127,23 +138,14 @@ export function Toolbar({ widgetCount, cockpitMode, activeEntity, onDeactivateEn
             )}
           </div>
         )}
-        {onOpenCart && (
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 relative" onClick={onOpenCart} aria-label="Carro" title="Carro">
-            <ShoppingCartIcon className="w-3.5 h-3.5" />
-            {cartCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </Button>
-        )}
+        {rightActions}
         <div className="relative">
           <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowCatalog(!showCatalog)}>
             <PlusIcon className="w-3 h-3" /> Agregar
           </Button>
           {showCatalog && (
             <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg p-1 z-30 w-40">
-              {WIDGET_CATALOG.map(w => (
+              {widgetCatalog.map(w => (
                 <button
                   key={w.type}
                   onClick={() => { onAddWidget(w.type); setShowCatalog(false) }}

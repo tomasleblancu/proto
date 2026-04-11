@@ -1,8 +1,4 @@
-export type WidgetType =
-  | 'orders' | 'products' | 'docs' | 'reorders' | 'order-detail'
-  | 'admin' | 'settings' | 'inventory' | 'schedules'
-  | 'order-header' | 'order-supplier' | 'order-timeline' | 'order-docs' | 'order-contacts' | 'order-findings' | 'order-costing'
-  | 'product-header' | 'product-orders' | 'product-suppliers'
+export type WidgetType = string
 
 export interface WidgetInstance {
   id: string
@@ -12,15 +8,7 @@ export interface WidgetInstance {
 }
 
 export interface ActiveEntity {
-  type: 'order' | 'product'
+  type: string
   id: string
   label: string
-}
-
-export interface CartItem {
-  productId: string
-  name: string
-  category?: string
-  imageUrl?: string
-  quantity: number
 }

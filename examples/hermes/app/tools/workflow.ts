@@ -6,8 +6,8 @@ import {
   PHASE_EXECUTION,
   requiresHumanApproval,
   type Phase,
-} from '@proto/core-shared'
-import { detectTlcRequirement } from '../shared/index.js'
+  detectTlcRequirement,
+} from '../shared/index.js'
 import { isValidStep } from './_hermes-helpers.js'
 
 const PHASE_ORDER = PHASES as readonly Phase[]

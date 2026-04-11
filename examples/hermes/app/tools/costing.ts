@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import { defineTool, getSupabase, agent, agentErr } from '@proto/core-mcp'
-import { COSTING_FIELDS, type CostingBreakdown, computeEstimated, computeActualFromPayments, mergeActual, type CostingDefault, type PaymentRow } from '@proto/core-shared'
-import { detectTlcRequirement } from '../shared/index.js'
+import { COSTING_FIELDS, type CostingBreakdown, computeEstimated, computeActualFromPayments, mergeActual, type CostingDefault, type PaymentRow, detectTlcRequirement } from '../shared/index.js'
 
 const breakdownSchema = z.object(
   Object.fromEntries(COSTING_FIELDS.map(f => [f, z.number().optional()]))

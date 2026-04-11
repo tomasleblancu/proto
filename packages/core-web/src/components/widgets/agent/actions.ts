@@ -3,7 +3,7 @@
  * Each action is an async handler that runs in the browser (usually a Supabase
  * write) and returns a short confirmation label for the button's success state.
  */
-import { supabase } from '@/lib/supabase'
+import { supabase } from '../../../lib/supabase'
 
 export type ActionHandler = (payload: any) => Promise<string>
 

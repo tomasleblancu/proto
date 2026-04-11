@@ -1,8 +1,0 @@
-{
-  "buildCommand": "cd ../.. && npm install && npm run build -w packages/core-shared && npm run build -w packages/core-web",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
