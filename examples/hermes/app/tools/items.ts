@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
-import { PHASES, type Phase } from '../shared/index.js'
-import { isValidStep } from './_hermes-helpers.js'
+import { PHASES, type Phase, isValidStep } from '../shared/index.js'
 
 export default [
   defineTool({

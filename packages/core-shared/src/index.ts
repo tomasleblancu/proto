@@ -3,3 +3,4 @@
 export * from './schemas.js'
 export * from './scheduling.js'
 export * from './define-entity.js'
+export * from './define-workflow.js'

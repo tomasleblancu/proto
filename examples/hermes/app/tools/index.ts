@@ -9,8 +9,9 @@
  * are generated from the entity registry by registerEntityTools.
  */
 import type { McpServer } from '@proto/core-mcp'
-import { registerUiTools, registerTools, registerEntityTools } from '@proto/core-mcp'
+import { registerUiTools, registerTools, registerEntityTools, registerWorkflowTools } from '@proto/core-mcp'
 
+import importWorkflow from '../workflows/import.js'
 import companyTools from './company.js'
 import contactsTools from './contacts.js'
 import costingTools from './costing.js'
@@ -28,7 +29,7 @@ import samplesTools from './samples.js'
 import schedulingTools from './scheduling.js'
 import sourcingTools from './sourcing.js'
 import suppliersTools from './suppliers.js'
-import workflowTools from './workflow.js'
+import tlcTools from './workflow.js'
 
 import { ENTITIES } from '../entities/index.js'
 
@@ -50,7 +51,7 @@ const ALL_APP_TOOLS = [
   ...schedulingTools,
   ...sourcingTools,
   ...suppliersTools,
-  ...workflowTools,
+  ...tlcTools,
 ]
 
 export function registerAppTools(server: McpServer): void {
@@ -62,4 +63,7 @@ export function registerAppTools(server: McpServer): void {
 
   // Entity tools — generated from app/entities/ definitions
   registerEntityTools(server, ENTITIES)
+
+  // Workflow tools — generated from app/workflows/import.ts
+  registerWorkflowTools(server, importWorkflow)
 }

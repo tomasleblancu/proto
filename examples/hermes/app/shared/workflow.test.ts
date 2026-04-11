@@ -7,7 +7,7 @@ import {
   requiresHumanApproval,
   minPhase,
   phaseIndex,
-} from './phases.js'
+} from '../workflows/import.js'
 import { detectTlcRequirement } from './tlc.js'
 import {
   isValidSampleTransition,
@@ -34,7 +34,7 @@ describe('phases', () => {
   it('PHASE_EXECUTION cubre todas las fases', () => {
     for (const phase of PHASES) {
       expect(PHASE_EXECUTION[phase]).toBeDefined()
-      expect(PHASE_EXECUTION[phase].skills.length).toBeGreaterThan(0)
+      expect((PHASE_EXECUTION[phase].skills ?? []).length).toBeGreaterThan(0)
     }
   })
 

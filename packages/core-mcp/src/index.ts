@@ -31,6 +31,7 @@ export {
   type ToolResult,
 } from './define-tool.js'
 export { buildEntityTools, registerEntityTools } from './entity-tools.js'
+export { buildWorkflowTools, registerWorkflowTools } from './workflow-tools.js'
 
 // ── Server factory ──
 
