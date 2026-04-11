@@ -24,10 +24,12 @@ Los tools se agrupan por dominio en archivos, con un archivo por dominio (no un 
 examples/hermes/app/tools/
 ├── orders.ts         ← tools de pedidos (create_order, list_orders, update_order, delete_order, ...)
 ├── products.ts       ← tools de productos
-├── workflow.ts       ← tools del state machine
-├── ... (19 archivos)
+├── workflow.ts       ← tool adjacente al workflow (detect_tlc_requirement) — las tools del state machine se generan via defineWorkflow
+├── ... (18 archivos)
 └── index.ts          ← aggregator que arma ALL_APP_TOOLS + registerAppTools()
 ```
+
+**Tools auto-generadas**: no las escribas a mano. Los tools `activate_<entity>` / `deactivate_<entity>` / `get_active_<entity>` vienen de `defineEntity` (ver `proto-entity` skill). Los tools del state machine (`get_item_state`, `advance_step`, `block_item`, etc.) vienen de `defineWorkflow` (ver `proto-workflow` skill).
 
 **Regla**: si estás agregando un tool a un dominio existente, andá al archivo correspondiente y agregá una entrada al array. Si el dominio es nuevo, creá un archivo nuevo y sumá su import al `index.ts`.
 
@@ -39,8 +41,7 @@ Cada archivo exporta por default un array de `defineTool` calls:
 // examples/hermes/app/tools/items.ts
 import { z } from 'zod'
 import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
-import { PHASES, type Phase } from '@proto/core-shared'
-import { isValidStep } from './_hermes-helpers.js'
+import { PHASES, type Phase, isValidStep } from '../shared/index.js'
 
 export default [
   defineTool({

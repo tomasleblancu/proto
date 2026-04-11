@@ -8,15 +8,15 @@ Esta carpeta contiene **framework skills** para Claude Code: guías operativas q
 |---|---|
 | [`proto-tool/`](./proto-tool/SKILL.md) | "agregá un tool para X", "el agente debería poder Y", "el tool Z no funciona" |
 | [`proto-widget/`](./proto-widget/SKILL.md) | "agregá un widget para X", "mostrame Y en el shell", "el widget Z debería Q" |
+| [`proto-entity/`](./proto-entity/SKILL.md) | "agregá un entity para X", "quiero cockpit para Y", "el agente debería activar Z" |
+| [`proto-workflow/`](./proto-workflow/SKILL.md) | "agregá un workflow para X", "necesito state machine", "la fase Y debería tener step Z" |
 
 ## Pendientes (coming with framework phases)
 
 | Skill | Requiere fase |
 |---|---|
-| `proto-entity` | 3e — `defineEntity` API |
-| `proto-workflow` | 3f — `defineWorkflow` / `phases.yaml` |
 | `proto-migration` | — (documenta SQL migration conventions) |
-| `proto-channel` | 3f — `defineChannel` |
+| `proto-channel` | — (futuro `defineChannel` para WhatsApp/Gmail/etc) |
 | `proto-scaffold` | 3g — `create-proto-app` |
 | `proto-debug` | — (troubleshooting: logs, sessions, auth, path resolution) |
 | `proto-deploy` | — (Docker compose, Railway, env vars) |
