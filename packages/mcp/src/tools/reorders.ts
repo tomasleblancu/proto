@@ -1,0 +1,152 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { z } from 'zod'
+import { getSupabase } from '../supabase.js'
+
+export function registerReorderTools(server: McpServer) {
+  server.tool(
+    'create_reorder_rule',
+    'Define a reorder rule for a product with a known supplier.',
+    {
+      company_id: z.string().describe('Company ID'),
+      supplier_name: z.string().describe('Supplier name'),
+      product_description: z.string().describe('Product description'),
+      quantity: z.number().describe('Quantity to reorder'),
+      frequency_days: z.number().describe('Reorder frequency in days'),
+      lead_time_days: z.number().default(0).describe('Lead time in days'),
+    },
+    async (args) => {
+      const db = getSupabase()
+      const nextDate = new Date()
+      nextDate.setDate(nextDate.getDate() + args.frequency_days)
+
+      const { data, error } = await db.from('reorder_rules').insert({
+        company_id: args.company_id,
+        supplier_name: args.supplier_name,
+        product_description: args.product_description,
+        quantity: args.quantity,
+        frequency_days: args.frequency_days,
+        lead_time_days: args.lead_time_days,
+        next_order_date: nextDate.toISOString().split('T')[0],
+        active: true,
+      }).select().single()
+
+      if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
+      return { content: [{ type: 'text' as const, text: `Reorder rule created: ${args.product_description} every ${args.frequency_days} days. Next order: ${nextDate.toISOString().split('T')[0]}` }] }
+    }
+  )
+
+  server.tool(
+    'check_reorders',
+    'Check which products are due for reorder based on their rules.',
+    {
+      company_id: z.string().optional().describe('Filter by company'),
+    },
+    async (args) => {
+      const db = getSupabase()
+      const today = new Date().toISOString().split('T')[0]
+
+      let query = db.from('reorder_rules')
+        .select('*')
+        .eq('active', true)
+        .lte('next_order_date', today)
+
+      if (args.company_id) query = query.eq('company_id', args.company_id)
+
+      const { data, error } = await query
+      if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
+
+      if (!data || data.length === 0) {
+        return { content: [{ type: 'text' as const, text: 'No products due for reorder.' }] }
+      }
+
+      const summary = data.map(r =>
+        `- ${r.product_description} from ${r.supplier_name} (qty: ${r.quantity}, due: ${r.next_order_date})`
+      ).join('\n')
+
+      return { content: [{ type: 'text' as const, text: `Products due for reorder:\n${summary}` }] }
+    }
+  )
+
+  server.tool(
+    'trigger_reorder',
+    'Create a new order from an existing reorder rule. Updates the rule\'s last_ordered_at and next_order_date.',
+    {
+      rule_id: z.string().describe('Reorder rule ID'),
+    },
+    async (args) => {
+      const db = getSupabase()
+
+      // Get the rule
+      const { data: rule, error: ruleError } = await db
+        .from('reorder_rules')
+        .select('*')
+        .eq('id', args.rule_id)
+        .single()
+
+      if (ruleError || !rule) {
+        return { content: [{ type: 'text' as const, text: 'Error: Reorder rule not found' }] }
+      }
+
+      if (!rule.active) {
+        return { content: [{ type: 'text' as const, text: 'Error: Reorder rule is inactive' }] }
+      }
+
+      // Create new order from rule
+      const { data: order, error: orderError } = await db.from('orders').insert({
+        company_id: rule.company_id,
+        supplier_name: rule.supplier_name,
+        products: [{ name: rule.product_description, quantity: rule.quantity }],
+        status: 'draft',
+      }).select().single()
+
+      if (orderError) {
+        return { content: [{ type: 'text' as const, text: `Error creating order: ${orderError.message}` }] }
+      }
+
+      // Update rule: last_ordered_at = now, next_order_date = now + frequency_days
+      const now = new Date()
+      const nextDate = new Date()
+      nextDate.setDate(now.getDate() + rule.frequency_days)
+
+      await db.from('reorder_rules').update({
+        last_ordered_at: now.toISOString(),
+        next_order_date: nextDate.toISOString().split('T')[0],
+      }).eq('id', args.rule_id)
+
+      // Log event
+      await db.from('order_events').insert({
+        order_id: order.id,
+        event_type: 'created_from_reorder',
+        description: `Auto-created from reorder rule for ${rule.product_description}`,
+        metadata: { rule_id: rule.id },
+      })
+
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `Reorder triggered. New order ${order.id} created for ${rule.product_description} (qty: ${rule.quantity}). Next reorder: ${nextDate.toISOString().split('T')[0]}`,
+        }],
+      }
+    }
+  )
+
+  server.tool(
+    'list_reorder_rules',
+    'List all reorder rules, optionally filtered by company.',
+    {
+      company_id: z.string().optional().describe('Filter by company'),
+      active_only: z.boolean().default(true).describe('Only show active rules'),
+    },
+    async (args) => {
+      const db = getSupabase()
+      let query = db.from('reorder_rules').select('*').order('next_order_date', { ascending: true })
+
+      if (args.company_id) query = query.eq('company_id', args.company_id)
+      if (args.active_only) query = query.eq('active', true)
+
+      const { data, error } = await query
+      if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
+      return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] }
+    }
+  )
+}

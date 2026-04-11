@@ -1,0 +1,44 @@
+services:
+  mcp:
+    build: .
+    container_name: hermes-mcp
+    command: ["npx", "tsx", "packages/mcp/src/server-http.ts"]
+    ports:
+      - "8093:8093"
+    env_file:
+      - .env.docker
+    environment:
+      - MCP_PORT=8093
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8093/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  agent:
+    build: .
+    container_name: hermes
+    ports:
+      - "8092:8092"
+    volumes:
+      - hermes-data:/data
+      - ./project.yaml:/app/project.yaml:ro
+      - ./prompts:/app/prompts:ro
+      - ./skills:/app/skills:ro
+    env_file:
+      - .env.docker
+    environment:
+      - PORT=8092
+    depends_on:
+      mcp:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8092/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  hermes-data:

@@ -1,0 +1,23 @@
+name: hermes
+display_name: Hermes
+timezone: America/Santiago
+
+mcp:
+  servers:
+    hermes:
+      type: http
+      url: http://hermes-mcp:8093/mcp
+
+prompts:
+  default: prompts/default.md
+  whatsapp: prompts/whatsapp.md
+
+skills:
+  dir: skills
+  excluded_channels:
+    whatsapp: []
+
+agents:
+  dir: agents
+
+always_allowed_tools: []

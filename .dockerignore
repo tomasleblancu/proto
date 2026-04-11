@@ -1,0 +1,11 @@
+node_modules
+dist
+.data
+.env
+.env.*
+.git
+.claude
+.vercel
+packages/web
+*.log
+.DS_Store
