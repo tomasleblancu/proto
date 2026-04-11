@@ -23,6 +23,13 @@ export { getSupabase } from './supabase.js'
 export { ok, json, err, agent, agentErr } from './tools/_helpers.js'
 export { registerUiTools } from './tools/ui.js'
 export { McpServer }
+export {
+  defineTool,
+  registerTools,
+  type ToolDefinition,
+  type ToolHandler,
+  type ToolResult,
+} from './define-tool.js'
 
 // ── Server factory ──
 

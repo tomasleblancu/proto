@@ -1,15 +1,13 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
 import { PHASES, type Phase } from '@proto/core-shared'
-import { err, json } from '@proto/core-mcp'
 import { isValidStep } from './_hermes-helpers.js'
 
-export function registerItemTools(server: McpServer) {
-  server.tool(
-    'create_order_item',
-    'Crea un item dentro de un pedido. Inicia en sourcing.identify_need salvo que se especifique otra fase/step. IMPORTANTE: si el item corresponde a un producto del catalogo, pasa product_id — sin eso la UI del cockpit de producto no listara este pedido.',
-    {
+export default [
+  defineTool({
+    name: 'create_order_item',
+    description: 'Crea un item dentro de un pedido. Inicia en sourcing.identify_need salvo que se especifique otra fase/step. IMPORTANTE: si el item corresponde a un producto del catalogo, pasa product_id — sin eso la UI del cockpit de producto no listara este pedido.',
+    schema: {
       order_id: z.string(),
       company_id: z.string(),
       description: z.string(),
@@ -26,20 +24,20 @@ export function registerItemTools(server: McpServer) {
       current_phase: z.enum(PHASES).default('sourcing'),
       current_step: z.string().default('identify_need'),
     },
-    async (args) => {
+    handler: async (args) => {
       if (!isValidStep(args.current_phase as Phase, args.current_step)) {
         return err(`Step invalido para fase ${args.current_phase}`)
       }
       const db = getSupabase()
       const { data, error } = await db.from('order_items').insert(args).select().single()
       return error ? err(error.message) : json(data)
-    }
-  )
+    },
+  }),
 
-  server.tool(
-    'update_order_item',
-    'Actualiza campos de un item existente: cantidad, precio, CBM unitario, peso, descripcion, SKU, supplier.',
-    {
+  defineTool({
+    name: 'update_order_item',
+    description: 'Actualiza campos de un item existente: cantidad, precio, CBM unitario, peso, descripcion, SKU, supplier.',
+    schema: {
       item_id: z.string(),
       description: z.string().optional(),
       sku: z.string().optional(),
@@ -52,14 +50,13 @@ export function registerItemTools(server: McpServer) {
       target_unit_price: z.number().optional().describe('Precio de venta target por unidad (en target_currency). Para calcular margen.'),
       target_currency: z.string().optional().describe('Moneda del precio target. Default CLP.'),
     },
-    async (args) => {
+    handler: async (args) => {
       const { item_id, ...patch } = args
-      // Remove undefined values
       const cleanPatch = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined))
       if (Object.keys(cleanPatch).length === 0) return err('Nada que actualizar')
       const db = getSupabase()
       const { data, error } = await db.from('order_items').update(cleanPatch).eq('id', item_id).select().single()
       return error ? err(error.message) : json(data)
-    }
-  )
-}
+    },
+  }),
+]
