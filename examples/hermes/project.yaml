@@ -9,15 +9,15 @@ mcp:
       url: http://hermes-mcp:8093/mcp
 
 prompts:
-  default: prompts/default.md
-  whatsapp: prompts/whatsapp.md
+  default: app/prompts/default.md
+  whatsapp: app/prompts/whatsapp.md
 
 skills:
-  dir: skills
+  dir: app/skills
   excluded_channels:
     whatsapp: []
 
 agents:
-  dir: agents
+  dir: app/agents
 
 always_allowed_tools: []

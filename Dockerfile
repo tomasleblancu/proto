@@ -24,13 +24,12 @@ COPY tsconfig.json .
 COPY packages/core-shared/ packages/core-shared/
 COPY packages/core-mcp/ packages/core-mcp/
 COPY packages/core-gateway/ packages/core-gateway/
-COPY project.yaml .
-COPY prompts/ prompts/
-COPY skills/ skills/
+COPY examples/hermes/ examples/hermes/
 
 ENV DATA_DIR=/data
 ENV CLAUDE_CONFIG_DIR=/data/claude
 ENV HOME=/data
+ENV PROTO_APP_ROOT=/app/examples/hermes
 
 EXPOSE ${PORT:-8090}
 

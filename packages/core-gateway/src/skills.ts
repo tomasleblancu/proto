@@ -1,11 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import type { ChatRequest } from '@proto/core-shared'
-import { config } from './config.js'
+import { config, resolveAppPath } from './config.js'
 import type { Skill } from './registry.js'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
 
 /**
  * Build tool map from skills, resolving one level of `depends`.
@@ -37,13 +33,7 @@ export function buildSystemPrompt(request: ChatRequest, allSkills: Skill[] = [])
   // Channel-specific base prompt
   const promptKey = request.channel === 'whatsapp' ? 'whatsapp' : 'default'
   const promptFile = config.prompts[promptKey] || config.prompts.default
-  let promptPath = resolve(promptFile)
-
-  // If not found at CWD, try repo root (2 levels up from packages/gateway/src/)
-  if (!existsSync(promptPath)) {
-    const repoRoot = resolve(__dirname, '..', '..', '..')
-    promptPath = resolve(repoRoot, promptFile)
-  }
+  const promptPath = resolveAppPath(promptFile)
 
   if (existsSync(promptPath)) {
     parts.push(readFileSync(promptPath, 'utf-8'))

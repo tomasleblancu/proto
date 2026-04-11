@@ -23,13 +23,12 @@ services:
       - "8092:8092"
     volumes:
       - hermes-data:/data
-      - ./project.yaml:/app/project.yaml:ro
-      - ./prompts:/app/prompts:ro
-      - ./skills:/app/skills:ro
+      - ./examples/hermes:/app/examples/hermes:ro
     env_file:
       - .env.docker
     environment:
       - PORT=8092
+      - PROTO_APP_ROOT=/app/examples/hermes
     depends_on:
       mcp:
         condition: service_healthy

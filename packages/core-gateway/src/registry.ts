@@ -4,12 +4,9 @@
  * Parsed once at import time and cached in module scope.
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
-import { resolve, join, basename, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join, basename } from 'node:path'
 import yaml from 'yaml'
-import { config } from './config.js'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
+import { config, resolveAppPath } from './config.js'
 
 // ── Types ──
 
@@ -24,12 +21,6 @@ export interface Skill {
 export interface Agent {
   name: string
   filePath: string
-}
-
-// ── Resolve repo root (2 levels up from packages/gateway/src/) ──
-
-function repoRoot(): string {
-  return resolve(__dirname, '..', '..', '..')
 }
 
 // ── Skill loader ──
@@ -57,7 +48,7 @@ function parseSkillFrontmatter(filePath: string): Skill | null {
 }
 
 function discoverSkills(): Skill[] {
-  const dir = resolve(repoRoot(), config.skills_dir)
+  const dir = resolveAppPath(config.skills_dir)
   if (!existsSync(dir)) return []
 
   const skills: Skill[] = []
@@ -75,7 +66,7 @@ function discoverSkills(): Skill[] {
 // ── Agent loader ──
 
 function discoverAgents(): Agent[] {
-  const dir = resolve(repoRoot(), config.agents_dir)
+  const dir = resolveAppPath(config.agents_dir)
   if (!existsSync(dir)) return []
 
   const agents: Agent[] = []

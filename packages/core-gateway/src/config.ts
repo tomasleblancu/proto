@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
+import { resolve, dirname, isAbsolute } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import yaml from 'yaml'
 
@@ -31,15 +31,33 @@ interface ProjectConfig {
   always_allowed_tools: string[]
 }
 
+/**
+ * APP_ROOT: the directory of the proto app being served (contains project.yaml + app/).
+ * Resolution order:
+ *   1. PROTO_APP_ROOT env var (absolute or relative to cwd)
+ *   2. cwd, if it contains project.yaml
+ *   3. Legacy fallback: 3 levels up from this file (backward compat for pre-carve-out layout)
+ */
+function resolveAppRoot(): string {
+  const envRoot = process.env.PROTO_APP_ROOT
+  if (envRoot) {
+    return isAbsolute(envRoot) ? envRoot : resolve(process.cwd(), envRoot)
+  }
+  const cwdConfig = resolve(process.cwd(), 'project.yaml')
+  if (existsSync(cwdConfig)) return process.cwd()
+  return resolve(__dirname, '..', '..', '..')
+}
+
+export const APP_ROOT = resolveAppRoot()
+
+/** Resolve a relative path against APP_ROOT (or return absolute paths as-is). */
+export function resolveAppPath(relative: string): string {
+  return isAbsolute(relative) ? relative : resolve(APP_ROOT, relative)
+}
+
 function loadConfig(): ProjectConfig {
   const configPath = process.env.PROJECT_CONFIG || 'project.yaml'
-  let resolved = resolve(configPath)
-
-  // If not found at CWD, try repo root (2 levels up from packages/gateway/)
-  if (!existsSync(resolved)) {
-    const repoRoot = resolve(__dirname, '..', '..', '..')
-    resolved = resolve(repoRoot, configPath)
-  }
+  const resolved = resolveAppPath(configPath)
 
   if (!existsSync(resolved)) {
     return {
