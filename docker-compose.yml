@@ -2,7 +2,7 @@ services:
   mcp:
     build: .
     container_name: hermes-mcp
-    command: ["npx", "tsx", "packages/core-mcp/src/server-http.ts"]
+    command: ["npx", "tsx", "examples/hermes/app/mcp-http.ts"]
     ports:
       - "8093:8093"
     env_file:

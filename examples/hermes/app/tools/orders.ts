@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '../supabase.js'
+import { getSupabase } from '@proto/core-mcp'
 import { isValidTransition, type OrderStatus } from '@proto/core-shared'
 import { adjustInventoryForStatusChange } from './inventory.js'
 

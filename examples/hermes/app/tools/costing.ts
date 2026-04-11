@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '../supabase.js'
+import { getSupabase } from '@proto/core-mcp'
 import { COSTING_FIELDS, type CostingBreakdown, computeEstimated, computeActualFromPayments, mergeActual, type CostingDefault, type PaymentRow, detectTlcRequirement } from '@proto/core-shared'
-import { agent, agentErr } from './_helpers.js'
+import { agent, agentErr } from '@proto/core-mcp'
 
 const breakdownSchema = z.object(
   Object.fromEntries(COSTING_FIELDS.map(f => [f, z.number().optional()]))

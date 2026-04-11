@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '../supabase.js'
+import { getSupabase } from '@proto/core-mcp'
 import {
   PHASES,
   PHASE_STEPS,
@@ -9,7 +9,7 @@ import {
   type Phase,
   detectTlcRequirement,
 } from '@proto/core-shared'
-import { agent, agentErr, isValidStep } from './_helpers.js'
+import { agent, agentErr, isValidStep } from '@proto/core-mcp'
 
 const PHASE_ORDER = PHASES as readonly Phase[]
 const phaseIdx = (p: Phase) => PHASE_ORDER.indexOf(p)

@@ -2,7 +2,8 @@
   "name": "proto",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "examples/*"
   ],
   "scripts": {
     "dev:gateway": "PROTO_APP_ROOT=examples/hermes npm run dev -w packages/core-gateway",

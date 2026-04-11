@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '../supabase.js'
+import { getSupabase } from '@proto/core-mcp'
 import { isValidCronExpr, TASK_OUTPUT_CHANNELS, TASK_NOTIFY_TRIGGERS } from '@proto/core-shared'
-import { err, json } from './_helpers.js'
+import { err, json } from '@proto/core-mcp'
 
 /**
  * Agent-facing CRUD + control for scheduled tasks.

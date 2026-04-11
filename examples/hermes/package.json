@@ -1,21 +1,22 @@
 {
-  "name": "@proto/core-mcp",
+  "name": "@proto-app/hermes",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "src/index.ts",
   "scripts": {
-    "build": "tsc",
-    "test": "vitest run"
+    "mcp": "tsx app/mcp.ts",
+    "mcp:http": "tsx app/mcp-http.ts"
   },
   "dependencies": {
+    "@proto/core-mcp": "*",
+    "@proto/core-shared": "*",
     "@modelcontextprotocol/sdk": "^1.27.0",
     "@supabase/supabase-js": "^2.49.0",
-    "@proto/core-shared": "*"
+    "zod": "^3.24.0",
+    "googleapis": "^171.4.0"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "typescript": "^5.7.0"
   }
 }

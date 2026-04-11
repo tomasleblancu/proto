@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '../supabase.js'
+import { getSupabase } from '@proto/core-mcp'
 import { PHASES, type Phase } from '@proto/core-shared'
-import { err, isValidStep, json } from './_helpers.js'
+import { err, isValidStep, json } from '@proto/core-mcp'
 
 export function registerItemTools(server: McpServer) {
   server.tool(

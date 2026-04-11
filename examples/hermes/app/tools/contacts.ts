@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '../supabase.js'
-import { err, json } from './_helpers.js'
+import { getSupabase } from '@proto/core-mcp'
+import { err, json } from '@proto/core-mcp'
 
 const ROLES = ['forwarder', 'customs_agent', 'supplier', 'other'] as const
 

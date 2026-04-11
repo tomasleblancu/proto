@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { readFileSync, existsSync } from 'node:fs'
 import { basename, extname } from 'node:path'
-import { getSupabase } from '../supabase.js'
+import { getSupabase } from '@proto/core-mcp'
 import {
   DOC_TYPES,
   DOC_KINDS,
@@ -13,7 +13,7 @@ import {
   type DocKind,
   type Incoterm,
 } from '@proto/core-shared'
-import { agent, agentErr } from './_helpers.js'
+import { agent, agentErr } from '@proto/core-mcp'
 
 const KIND_TO_PAYMENT_TYPE: Record<string, string> = {
   proforma_invoice: 'deposit',

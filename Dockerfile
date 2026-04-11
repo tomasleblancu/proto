@@ -17,6 +17,7 @@ COPY package.json .
 COPY packages/core-shared/package.json packages/core-shared/
 COPY packages/core-mcp/package.json packages/core-mcp/
 COPY packages/core-gateway/package.json packages/core-gateway/
+COPY examples/hermes/package.json examples/hermes/
 RUN npm install --ignore-scripts
 
 # Copy source

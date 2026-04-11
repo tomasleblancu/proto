@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '../supabase.js'
+import { getSupabase } from '@proto/core-mcp'
 import { getActiveOrder, setActiveOrder } from '../activeOrder.js'
 
 const ok = (text: string) => ({ content: [{ type: 'text' as const, text }] })

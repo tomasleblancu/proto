@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { getSupabase } from '../supabase.js'
-import { ok, err, json } from './_helpers.js'
+import { getSupabase } from '@proto/core-mcp'
+import { ok, err, json } from '@proto/core-mcp'
 
 export function registerSupplierTools(server: McpServer) {
   server.tool(
