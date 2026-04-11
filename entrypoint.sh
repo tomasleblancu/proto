@@ -34,4 +34,4 @@ else
 fi
 
 echo "[hermes] Starting gateway on port ${PORT:-8090}"
-exec npx tsx packages/gateway/src/server.ts
+exec npx tsx packages/core-gateway/src/server.ts

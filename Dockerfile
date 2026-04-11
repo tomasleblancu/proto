@@ -14,16 +14,16 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json .
-COPY packages/shared/package.json packages/shared/
-COPY packages/mcp/package.json packages/mcp/
-COPY packages/gateway/package.json packages/gateway/
+COPY packages/core-shared/package.json packages/core-shared/
+COPY packages/core-mcp/package.json packages/core-mcp/
+COPY packages/core-gateway/package.json packages/core-gateway/
 RUN npm install --ignore-scripts
 
 # Copy source
 COPY tsconfig.json .
-COPY packages/shared/ packages/shared/
-COPY packages/mcp/ packages/mcp/
-COPY packages/gateway/ packages/gateway/
+COPY packages/core-shared/ packages/core-shared/
+COPY packages/core-mcp/ packages/core-mcp/
+COPY packages/core-gateway/ packages/core-gateway/
 COPY project.yaml .
 COPY prompts/ prompts/
 COPY skills/ skills/

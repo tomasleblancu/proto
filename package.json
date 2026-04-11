@@ -1,13 +1,13 @@
 {
-  "name": "hermes",
+  "name": "proto",
   "private": true,
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "dev:gateway": "npm run dev -w packages/gateway",
-    "dev:web": "npm run dev -w packages/web",
-    "build": "npm run build -w packages/shared && npm run build -w packages/mcp && npm run build -w packages/gateway && npm run build -w packages/web",
+    "dev:gateway": "npm run dev -w packages/core-gateway",
+    "dev:web": "npm run dev -w packages/core-web",
+    "build": "npm run build -w packages/core-shared && npm run build -w packages/core-mcp && npm run build -w packages/core-gateway && npm run build -w packages/core-web",
     "test": "vitest run",
     "test:watch": "vitest"
   },
