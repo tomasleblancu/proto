@@ -33,9 +33,18 @@ interface Props {
   onRegisterClear?: (fn: () => void) => void
   onMessagesChange?: (count: number) => void
   onAgentMount?: (spec: any, title?: string) => void
-  onFocusOrder?: (orderId: string | null) => void
+  onAgentActivateEntity?: (type: string, id: string) => void
+  onAgentDeactivateEntity?: (type: string) => void
   activeEntity?: ActiveEntity | null
   onClearEntity?: () => void
+}
+
+/** Parses `activate_<name>` / `deactivate_<name>` tool names (with optional MCP prefix). */
+function parseEntityToolName(tool: string | undefined, verb: 'activate' | 'deactivate'): string | null {
+  if (!tool) return null
+  const suffix = tool.includes('__') ? tool.split('__').pop()! : tool
+  const match = suffix.match(new RegExp(`^${verb}_([a-z_]+)$`))
+  return match ? match[1] : null
 }
 
 const ALL_SKILLS = ['hermes-company', 'hermes-products', 'hermes-intake', 'hermes-orders', 'hermes-documents', 'hermes-reorders', 'hermes-customs-cl', 'hermes-inventory', 'hermes-gmail', 'hermes-sourcing', 'hermes-ui', 'hermes-scheduling']
@@ -70,7 +79,7 @@ function saveMessages(companyId: string, session: string, messages: Message[]) {
   try { localStorage.setItem(storageKey(companyId, session), JSON.stringify(messages.filter(m => !m.loading || m.text))) } catch {}
 }
 
-export default function Chat({ companyId, userId, companyContext, hasCompany, onStreamComplete, onRegisterSend, onRegisterClear, onMessagesChange, onAgentMount, onFocusOrder, activeEntity, onClearEntity }: Props) {
+export default function Chat({ companyId, userId, companyContext, hasCompany, onStreamComplete, onRegisterSend, onRegisterClear, onMessagesChange, onAgentMount, onAgentActivateEntity, onAgentDeactivateEntity, activeEntity, onClearEntity }: Props) {
   const sessionKey = sessionKeyFor(activeEntity)
   const [messages, setMessages] = useState<Message[]>(() => loadMessages(companyId, sessionKey))
   const [streaming, setStreaming] = useState(false)
@@ -160,12 +169,17 @@ export default function Chat({ companyId, userId, companyContext, hasCompany, on
               const args = (event as any).args
               onAgentMount?.(args.spec, args.title)
             }
-            if (event.tool === 'activate_order' || event.tool?.endsWith('__activate_order')) {
-              const args = (event as any).args
-              if (args?.order_id) onFocusOrder?.(args.order_id)
-            }
-            if (event.tool === 'deactivate_order' || event.tool?.endsWith('__deactivate_order')) {
-              onFocusOrder?.(null)
+            {
+              const activateName = parseEntityToolName(event.tool, 'activate')
+              if (activateName) {
+                const args = (event as any).args
+                const id = args?.[`${activateName}_id`]
+                if (id) onAgentActivateEntity?.(activateName, id)
+              }
+              const deactivateName = parseEntityToolName(event.tool, 'deactivate')
+              if (deactivateName) {
+                onAgentDeactivateEntity?.(deactivateName)
+              }
             }
             updated[updated.length - 1] = {
               ...last,

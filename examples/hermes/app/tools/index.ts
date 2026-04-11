@@ -5,14 +5,12 @@
  * (created via defineTool). We concat them all and hand the result to
  * registerTools which wraps each handler and calls server.tool() for us.
  *
- * To add a new tool: create a new file with `export default [defineTool(...)]`
- * and append its import to the aggregation below. No need to touch the
- * register function itself.
+ * Entity activate/deactivate/get_active tools are NOT hand-written — they
+ * are generated from the entity registry by registerEntityTools.
  */
 import type { McpServer } from '@proto/core-mcp'
-import { registerUiTools, registerTools } from '@proto/core-mcp'
+import { registerUiTools, registerTools, registerEntityTools } from '@proto/core-mcp'
 
-import activeOrderTools from './active-order.js'
 import companyTools from './company.js'
 import contactsTools from './contacts.js'
 import costingTools from './costing.js'
@@ -32,8 +30,9 @@ import sourcingTools from './sourcing.js'
 import suppliersTools from './suppliers.js'
 import workflowTools from './workflow.js'
 
+import { ENTITIES } from '../entities/index.js'
+
 const ALL_APP_TOOLS = [
-  ...activeOrderTools,
   ...companyTools,
   ...contactsTools,
   ...costingTools,
@@ -60,4 +59,7 @@ export function registerAppTools(server: McpServer): void {
 
   // Domain tools
   registerTools(server, ALL_APP_TOOLS)
+
+  // Entity tools — generated from app/entities/ definitions
+  registerEntityTools(server, ENTITIES)
 }

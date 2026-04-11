@@ -5,19 +5,16 @@ import {
   Button,
   useAuth,
   useTheme,
+  supabase,
   hermesSocket,
   buildWidgetRegistry,
   type CockpitDefinition,
 } from '@proto/core-web'
 import { Eraser, ShoppingCartIcon } from 'lucide-react'
-import { buildOrderSnapshot } from './shared/orderSnapshot'
 import type { CartItem } from './shared/types'
 import { WIDGETS } from './widgets/registry'
-import {
-  DEFAULT_WIDGETS, DEFAULT_LAYOUTS,
-  ORDER_COCKPIT_WIDGETS, ORDER_COCKPIT_LAYOUTS,
-  PRODUCT_COCKPIT_WIDGETS, PRODUCT_COCKPIT_LAYOUTS,
-} from './widgets/catalog'
+import { DEFAULT_WIDGETS, DEFAULT_LAYOUTS } from './widgets/catalog'
+import { ENTITIES, orderEntity } from '@app/entities/index.js'
 import CartModal from './widgets/modals/CartModal'
 import CreateOrderDialog from './widgets/modals/CreateOrderDialog'
 import CreateProductDialog from './widgets/modals/CreateProductDialog'
@@ -32,10 +29,11 @@ import Admin from './pages/Admin'
 
 const WIDGET_REGISTRY = buildWidgetRegistry(WIDGETS)
 
-const COCKPITS: Record<string, CockpitDefinition> = {
-  order: { widgets: ORDER_COCKPIT_WIDGETS, layouts: ORDER_COCKPIT_LAYOUTS },
-  product: { widgets: PRODUCT_COCKPIT_WIDGETS, layouts: PRODUCT_COCKPIT_LAYOUTS },
-}
+const COCKPITS: Record<string, CockpitDefinition> = Object.fromEntries(
+  ENTITIES
+    .filter(e => !!e.cockpit)
+    .map(e => [e.name, { widgets: e.cockpit!.widgets, layouts: e.cockpit!.layouts }])
+)
 
 const CART_KEY = 'hermes-cart'
 function loadCart(): CartItem[] {
@@ -142,7 +140,11 @@ export default function App() {
   }, [])
 
   const refreshOrderSnapshot = useCallback((orderId: string) => {
-    buildOrderSnapshot(orderId).then(md => setOrderSnapshot(md)).catch(() => {})
+    if (!orderEntity.snapshotBuilder) return
+    orderEntity
+      .snapshotBuilder({ id: orderId } as any, { supabase })
+      .then(md => setOrderSnapshot(md))
+      .catch(() => {})
   }, [])
 
   const setActiveEntity = useCallback((e: Entity | null) => {
@@ -403,7 +405,15 @@ export default function App() {
             onAgentMount={onAgentMount}
             activeEntity={activeEntity}
             onClearEntity={() => setActiveEntity(null)}
-            onFocusOrder={(id) => id ? setActiveEntity({ type: 'order', id, label: 'Pedido' }) : setActiveEntity(null)}
+            onAgentActivateEntity={(type, id) => {
+              if (type !== 'order' && type !== 'product') return
+              const def = ENTITIES.find(e => e.name === type)
+              const label = def?.displayName
+                ? def.displayName.charAt(0).toUpperCase() + def.displayName.slice(1)
+                : type
+              setActiveEntity({ type, id, label })
+            }}
+            onAgentDeactivateEntity={() => setActiveEntity(null)}
           />
         </div>
       </div>

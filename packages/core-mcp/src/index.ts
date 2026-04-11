@@ -30,6 +30,7 @@ export {
   type ToolHandler,
   type ToolResult,
 } from './define-tool.js'
+export { buildEntityTools, registerEntityTools } from './entity-tools.js'
 
 // ── Server factory ──
 
