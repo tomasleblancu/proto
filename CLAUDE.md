@@ -1,311 +1,378 @@
-# Hermes
+# Proto
 
-Agente AI de gestion de importaciones para pymes chilenas. TypeScript monorepo.
+TypeScript monorepo framework for building AI-agent-driven apps. Provides a gateway (wraps Claude Code CLI), MCP tool server, React shell with widget registry, and Supabase integration. Apps extend via declarative APIs: `defineTool`, `defineWidget`, and (coming) `defineEntity`, `defineWorkflow`.
+
+**Hermes** — the original app this was extracted from — lives at `examples/hermes/` as the reference consumer and is still under active development.
 
 ## Arquitectura
 
 ```
-packages/
-  gateway/    Hono HTTP+WS, wrappea Claude Code CLI como subprocess (puerto 8092)
-  mcp/        MCP server con tools del dominio — stdio (dev) + HTTP (puerto 8093, Docker)
-  web/        React SPA (Vite) con chat + shell de widgets (puerto 3001)
-  shared/     tipos, schemas Zod, constantes del state machine
-skills/       domain knowledge cargable por el agente (YAML frontmatter)
-agents/       5 prompts role-based (legacy, no se cargan — solo skills)
-supabase/     migraciones SQL con RLS (30 archivos: 10 legacy + 20 timestamp)
-prompts/      system prompts del gateway (default.md, whatsapp.md)
-project.yaml  config que liga gateway ↔ skills ↔ agents ↔ prompts ↔ MCP
-.mcp.json     config del Claude Code CLI (MCP server hermes en localhost:8093)
+proto/
+├── packages/                   Framework libraries
+│   ├── core-gateway/           Hono HTTP+WS, Claude CLI runner, scheduler, mail
+│   ├── core-mcp/               MCP server factory, defineTool, helpers, UI tools
+│   ├── core-shared/            Framework types (ChatRequest, SSEEvent, scheduling)
+│   └── core-web/               React shell, defineWidget, hooks, agent primitives
+├── examples/
+│   └── hermes/                 Reference app (@proto-app/hermes workspace)
+│       ├── app/
+│       │   ├── mcp.ts          stdio entry point
+│       │   ├── mcp-http.ts     HTTP entry point (runs in Docker)
+│       │   ├── activeOrder.ts  per-session active order state
+│       │   ├── tools/          89 MCP tools via defineTool
+│       │   │   ├── index.ts    aggregates arrays → registerAppTools()
+│       │   │   └── *.ts
+│       │   ├── shared/         Hermes-specific types (docs, payments, etc.)
+│       │   ├── skills/         11 domain skills (hermes-orders, etc.)
+│       │   ├── agents/         legacy, not loaded
+│       │   └── prompts/        channel system prompts
+│       ├── supabase/
+│       │   └── migrations/     30 SQL files
+│       ├── project.yaml        app config (MCP, skills dir, prompts, timezone)
+│       ├── .mcp.json           local Claude Code CLI config
+│       └── package.json        @proto-app/hermes
+├── .claude/skills/             framework skills for Claude Code (proto-tool, proto-widget)
+├── docker-compose.yml          2 services: hermes-mcp (8093) + hermes (8092)
+├── Dockerfile                  copies packages + examples/hermes, sets PROTO_APP_ROOT
+└── package.json                workspaces: packages/* + examples/*
 ```
 
-### packages/gateway
+## Mental model
 
-`server.ts` (38 líneas) solo hace setup + mount. Orden: CORS → auth middleware en `/chat` y `/upload/*` → rutas → WebSocket inject → `startMailIngester()`.
+**Framework** (`packages/core-*`) provides runtime + extension points, nothing domain-specific.
+**App** (`examples/hermes/`) consumes the framework as a library and plugs in tools, widgets, entities, workflows, skills, migrations.
 
-**Rutas** (`routes/`):
-- `chat.ts` — WebSocket `/ws` (primario, handshake `{type:'auth', secret}`), REST `/chat`, `/chat/stream`, `/reset`
-- `upload.ts` — `/upload` para attachments (disco local, auto-delete 30 min)
-- `gmail.ts` — OAuth `/gmail/auth`, `/gmail/callback` (scopes: gmail.readonly + gmail.send)
+Apps are never referenced from core. The dependency direction is always `app → core`.
+
+## packages/core-gateway
+
+`server.ts` mounts Hono + CORS + auth middleware + routes + WebSocket + optional mail ingester. Cada dominio de rutas vive en `routes/`:
+
+- `chat.ts` — WebSocket `/ws` (primario), REST `/chat`, `/chat/stream`, `/reset`
+- `upload.ts` — `/upload` attachments (disco local, auto-delete 30 min)
+- `gmail.ts` — OAuth flow for per-user Gmail connection
+- `cron.ts` — `/cron/tick`, `/cron/trigger`, `/cron/list`, `/cron/recalc`
 - `health.ts` — `/health`
-- `cron.ts` — `/cron/tick` (llamado por `pg_cron`), `/cron/trigger`, `/cron/list`, `/cron/recalc`
 
-**Soporte**:
-- `claude-runner.ts` — spawn de Claude CLI (`claude -p <msg> --model ... --resume <session_id>`). Dos modos: `runClaude()` bloqueante + `streamClaude()` generator. Sesiones persistidas en `/data/sessions/{company}/{sessionKey}/.claude-session-id` para `--resume` automático. Idle timeout mata el proceso si no hay output.
-- `session.ts` — key = `SHA256(name-company_id-session_key).slice(0,32)`. Cada sesión = directorio. MCP config generado dinámico por sesión.
-- `scheduler.ts` — cron in-process con `croner` + persistencia DB (`scheduled_tasks.next_run_at` canonical). `tick()` → `scanDueTasks()` → `runClaude()` → escribe `task_runs`.
-- `email-sender.ts` — SMTP via `nodemailer`. Genera Message-ID `<hermes-{uuid}@hermes>`, registra en `mail_messages`.
-- `mail-ingester.ts` — IMAP polling con `ImapFlow` (default 30s). Dedup por Message-ID, salta auto-replies/bounces. Resuelve sender → company vía `mail-router`, thread lookup via `mail-threads`, luego `runClaude()` con history y auto-reply.
-- `mail-router.ts` — `resolveCompanyByEmail()` lookup contra `companies.contact_email` o `profiles.email` vía `company_users`.
-- `mail-threads.ts` — agrupación por `In-Reply-To`/`References`. Thread ID `mail-thread-{uuid}` vinculado a session_key del CLI.
-- `skills.ts` — parsea YAML frontmatter de `skills/*/SKILL.md`, resuelve dependencias transitivas, filtra por canal. Cacheado al startup.
-- `registry.ts` — lee skills + agents al startup.
-- `auth.ts` — middleware Hono con header `x-internal-secret` vs `INTERNAL_SECRET` env. **No JWT Supabase** — solo secret compartido.
-- `rate-limiter.ts` — **DESACTIVADO**. Retorna `{allowed: true}` incondicional. Reactivar antes de lanzamiento multi-tenant.
-- `config.ts` — **UNICO** punto para `process.env`. Exporta: `INTERNAL_SECRET`, `MAX_TURNS`, `TIMEOUT_SECONDS`, `CLAUDE_MODEL`, `PORT`, `DATA_DIR`, etc.
+**Support modules**:
+- `claude-runner.ts` — spawn Claude CLI (`--resume` automático via `.claude-session-id`), stream or block
+- `session.ts` — SHA256 session keys → `/data/sessions/{company}/{sessionKey}/`
+- `scheduler.ts` — in-process cron (`croner`) backed by `scheduled_tasks.next_run_at`
+- `email-sender.ts` / `mail-ingester.ts` / `mail-router.ts` / `mail-threads.ts` — SMTP + IMAP mail-as-chat channel
+- `skills.ts` / `registry.ts` — YAML frontmatter skill loader with transitive deps
+- `auth.ts` — `x-internal-secret` header middleware (no JWT Supabase)
+- `rate-limiter.ts` — **DESACTIVADO** (retorna allowed=true). Reactivar pre lanzamiento multi-tenant.
+- `config.ts` — **único** acceso a `process.env`. Exporta `APP_ROOT`, `resolveAppPath()`, `config`, `INTERNAL_SECRET`, `MAX_TURNS`, etc.
 
-Sin tests en gateway.
+### Path resolution: `PROTO_APP_ROOT`
 
-### packages/mcp
+Every app path (project.yaml, skills/, prompts/, etc.) resolves via `resolveAppPath()` in `config.ts`:
 
-Dos transportes comparten el mismo set de tools:
-- `server.ts` — stdio (`StdioServerTransport`) para dev local con `.mcp.json` → localhost:8093
-- `server-http.ts` — HTTP streamable en puerto 8093 con **sesiones múltiples aisladas** (`Map<sessionId, transport>`). Cada POST crea/reutiliza sesión. Usado en Docker (Compose service `hermes-mcp`).
-
-Ambos usan **service role key de Supabase** (bypass RLS) — el `company_id` se valida manualmente en cada query con `.eq('company_id', ...)`.
-
-**Un archivo por dominio en `tools/`** (20 archivos, ~100 tools). Cada uno exporta `register<Dominio>Tools(server)`. Helpers compartidos en `_helpers.ts`: `ok(text)`, `json(obj)`, `err(msg)`, `agent({summary, data, hint})`, `agentErr(summary)`, `isValidStep(phase, step)`.
-
-**State machine & orders**:
-- `workflow.ts` (~355L) — core del state machine a nivel item. Tools: `get_item_state`, `list_items_by_phase`, `advance_step`, `block_item`, `unblock_item`, `hold_item`, `resume_item`, `cancel_item`, `request_human_approval`, `detect_tlc_requirement`. `advance_step` valida flags, enforce avance +1 fase, bloquea gates humanos si `actor != 'user'`, registra transición en `phase_transitions`.
-- `orders.ts` — CRUD: `create_order`, `update_order_status`, `get_order`, `list_orders`, `update_order`, `delete_order`, `get_order_timeline`. Llama `adjustInventoryForStatusChange()` (helper no-tool de `inventory.ts`).
-- `items.ts` — `create_order_item`, `update_order_item` (supplier_id REQUIRED).
-- `active-order.ts` — `activate_order`, `deactivate_order`, `get_active_order` (context session-level, pinta cockpit en frontend).
-
-**Catálogo y sourcing**:
-- `products.ts` — `create_product`, `update_product`, `get_product`, `list_products`, `link_product_supplier`, `unlink_product_supplier`, `attach_product_image`.
-- `suppliers.ts` — `create_supplier`, `list_suppliers`, etc.
-- `sourcing.ts` (~320L) — `search_alibaba_by_image_url`, `search_alibaba_by_image_path`, `attach_product_image`. Alibaba OSS integration con cache 24h local.
-- `samples.ts` — `create_sample`, `list_samples`, `evaluate_sample`, `update_sample_status`, `promote_sample_to_item`.
-
-**Documentos, pagos, costeo**:
-- `documents.ts` (~312L) — `upload_document`, `list_documents`, `validate_document_set`, `attach_document` (workflow-aware), `list_required_docs`, `get_document`, `update_document`.
-- `payments.ts` — `record_payment`, `update_payment`, `list_payments`, `delete_payment`.
-- `costing.ts` — `upsert_costing` (merge estimated/actual JSONB), `get_costing`, `list_costings`, `get_costing_defaults`.
-
-**Operaciones y relaciones**:
-- `inventory.ts` — `get_inventory`, `adjust_inventory`, `get_inventory_history`. Además exporta `adjustInventoryForStatusChange` (helper no-tool).
-- `reorders.ts` — `create_reorder_rule`, `check_reorders`, `list_reorder_rules`, `trigger_reorder`.
-- `contacts.ts` — `upsert_contact`, `list_contacts`, `delete_contact` (libreta forwarder/customs/supplier por empresa o override por orden).
-- `findings.ts` — `record_finding`, `list_findings`, `delete_finding` (hallazgos del agente con dedup por `gmail_message_id`).
-
-**Company & comms**:
-- `company.ts` — `get_profile`, `update_profile`, `create_company`, `list_companies`, `add_company_user`.
-- `gmail.ts` — `gmail_status`, `read_emails`, `search_emails`, `send_email` (googleapis + auto-refresh).
-- `scheduling.ts` — `schedule_task`, `list_scheduled_tasks`, `pause_task`, `resume_task`, `update_task`, `get_task_runs`, `delete_task`, `trigger_task_now`.
-- `notifications.ts` — `send_alert`.
-- `ui.ts` — `render_ui` (no-op servidor; el frontend intercepta el `tool_use` event con la spec).
-
-**Patterns & deuda**:
-- Zod schemas inline en cada tool file (no centralizados) — usa `.describe()` para agent-friendly docs.
-- Error handling mixto: algunos usan `agentErr()`, otros `err()`, otros return inline. Falta estandarizar.
-- Sin tests. Ni `.test.ts` ni `.spec.ts`.
-- Archivos grandes a vigilar: `workflow.ts`, `sourcing.ts`, `documents.ts`, `orders.ts` (~300L cada uno).
-
-### packages/web
-
-SPA React + Vite. **Routing manual basado en `pathname`** en `App.tsx` (NO react-router): `/gmail/callback`, `/reset-password`, `/admin`, `/login`, default → Landing/Chat.
-
-```
-src/
-  App.tsx                routing manual + useAuth + activeEntity state + WS lifecycle
-  pages/                 9 páginas
-    Chat.tsx             (553L) hub central: WS streaming, message queue, attachments
-    Admin.tsx            (1286L) agentes, tareas cron, config global [refactor pendiente]
-    Onboarding.tsx       (356L) create company + profile completion
-    Landing.tsx          home pre-login
-    Login.tsx, ResetPassword.tsx, GmailCallback.tsx, Files.tsx, Products.tsx
-  components/
-    Shell.tsx            (399L) orquesta widgets, grid, cockpit vs general, focus/agentView
-    shell/
-      types.ts           WidgetType, WidgetInstance, ActiveEntity, CartItem
-      catalog.ts         WIDGET_CATALOG (7 tipos), DEFAULT_SIZES, DEFAULT_LAYOUTS,
-                         ORDER_COCKPIT_WIDGETS (7), PRODUCT_COCKPIT_WIDGETS (3)
-      persistence.ts     localStorage 'hermes-shell' load/save/clear
-      Toolbar.tsx        Home, tabs, Reset, +Widget, Settings, Cart, User menu
-      FocusView.tsx      fullscreen agentView + widget strip minimizada
-      EmptyState.tsx     grid de botones "Agrega widgets"
-    widgets/             27 archivos
-      OrdersWidget, ProductsWidget, DocsWidget, InventoryWidget, ReordersWidget,
-      SchedulesWidget, AdminWidget, SettingsWidget, ProfileWidget, OrderDetailWidget
-      CartModal, CreateOrderDialog, CreateProductDialog, SettingsModal  (modals)
-      cockpit/order/     Header, Supplier, Docs, Timeline, Contacts, Costing, Findings, shared
-      cockpit/product/   Header, Orders, Suppliers, shared
-      agent/             Generative.tsx, Primitives.tsx, actions.ts (render_ui runtime)
-    ui/                  shadcn primitives (kebab-case)
-  hooks/                 useAuth, useTheme, useData, useMountEffect
-  lib/
-    config.ts            GATEWAY_URL, INTERNAL_SECRET, WS_URL (UNICO acceso a import.meta.env)
-    api.ts               (224L) HermesSocket (singleton, auto-reconnect 3s, keepalive 25s,
-                         message queue, auth via secret), sendChatWs, SSE fallback
-    orderSnapshot.ts     (154L) markdown snapshot builder (items, docs, payments, transitions)
-                         inyectado en prompt para activeEntity context
-    widgetCache.ts       Map cache por widget+id
-    drag.ts              DragContext type, setDragData/getDragData/buildAgentPrompt
-    supabase.ts          client browser
-    utils.ts             cn()
+```ts
+function resolveAppRoot(): string {
+  const envRoot = process.env.PROTO_APP_ROOT
+  if (envRoot) return isAbsolute(envRoot) ? envRoot : resolve(process.cwd(), envRoot)
+  if (existsSync(resolve(process.cwd(), 'project.yaml'))) return process.cwd()
+  return resolve(__dirname, '..', '..', '..')  // legacy fallback
+}
 ```
 
-**Estado global**: No hay zustand/jotai/redux. `activeEntity` en localStorage + `useState` en App.tsx. Props drilling Shell → widgets. `orderSnapshot` se refresca al cambiar activeEntity y se inyecta en cada chat message como `company_context`.
+Set in:
+- Root `package.json`: `"dev:gateway": "PROTO_APP_ROOT=examples/hermes ..."`
+- `docker-compose.yml`: `environment: - PROTO_APP_ROOT=/app/examples/hermes`
+- `Dockerfile`: `ENV PROTO_APP_ROOT=/app/examples/hermes`
 
-**Generative UI (render_ui)**:
-1. Agent llama `render_ui` con `{spec: UINode, title?}`.
-2. Chat.tsx captura el `tool_use` event → setAgentView en App.tsx.
-3. Shell.tsx renderiza `FocusView` → `Generative(spec)`.
-4. `Primitives.tsx` soporta: Stack, Row, Grid, Heading, Text, Image, Badge, Stat, Rating, GoldSupplier, Card, CardBody, LinkOut, Button, Table. **Sin formularios** (no Input/Select).
-5. Button actions: `save_alternative` (guarda Alibaba supplier a `product_alternatives`) o `send` (manda texto al chat).
+All of `registry.ts`, `skills.ts`, `config.ts` call `resolveAppPath(relative)` instead of hardcoding `repoRoot`.
 
-**Session keys en WebSocket**: `web` (general), `order-{id}` o `product-{id}` (cuando activeEntity está set — el gateway reutiliza Claude `--resume` por session_key).
+## packages/core-mcp
 
-**Cockpit mode** (al activar order/product):
-- No hay mensaje del gateway — el frontend detecta `activeEntity !== null && !focusMode`.
-- Shell switchea a `CockpitGrid` con layouts fijos (ORDER_COCKPIT_LAYOUTS / PRODUCT_COCKPIT_LAYOUTS).
-- El agente sabe del contexto via `company_context` en el prompt.
+**Library, not executable.** No `src/server.ts` entry — apps create their own entry and import the framework.
 
-### Regla: NO `useEffect` directo en componentes
+`src/index.ts` exports:
+- `createMcpServer({ name, version })` — factory wrapping `McpServer` from MCP SDK
+- `runStdio(server)` — blocks on stdio transport (for CLI subprocess)
+- `runHttp({ port, buildServer, displayName })` — session-isolated HTTP transport with per-session `buildServer()` factory
+- `defineTool({ name, description, schema, handler })` — declarative tool definition
+- `registerTools(server, defs[])` — iterate + wrap in try/catch + call `server.tool()`
+- `getSupabase()` — service-role client singleton
+- `ok(text)`, `json(obj)`, `err(msg)` — content helpers
+- `agent({summary, data, hint?})`, `agentErr(summary, details?)` — structured agent responses
+- `registerUiTools(server)` — registers the framework's `render_ui` tool
 
-Prohibido llamar `useEffect` directo en componentes. Solo puede aparecer dentro de hooks reusables (`useMountEffect`, `useData`, etc). Antes de escribir un effect, recorre el checklist:
+Remaining sources:
+- `src/define-tool.ts` — the defineTool / registerTools / ToolDefinition types
+- `src/supabase.ts` — Supabase client factory
+- `src/tools/_helpers.ts` — ok/json/err/agent/agentErr (framework, no domain imports)
+- `src/tools/ui.ts` — `render_ui` tool (generative UI hook for frontend)
 
-1. **¿Se puede derivar durante el render?** → inline o `useMemo`. No crear state que solo espeja otro state/prop.
-2. **¿Lo dispara una acción del usuario?** → event handler. Si hay lógica compartida, extrae una función — no un effect.
-3. **¿Estás fetcheando data?** → usa `useData(fetcher)` que maneja AbortController. Nunca `fetch().then(setState)` en un effect.
-4. **¿Te suscribes a un store externo?** → `useSyncExternalStore`.
-5. **¿Necesitas resetear estado cuando cambia un id/prop?** → `key={id}` en el componente, no un effect que resetea.
-6. **¿Es true mount-time external sync?** (DOM, widget 3rd-party, browser API) → `useMountEffect(() => {...})`.
-7. **¿Un ref para controlar cuando corre el effect (`hasRun.current`, callback en ref)?** → el effect mismo es el bug. Elimina la raíz, no le pongas parche. Usa `useEffectEvent` o handler.
-8. **¿Side effect DOM al montar un nodo?** → callback ref (`const ref = useCallback(node => {...}, [])`).
+**No `isValidStep`, no `PHASE_STEPS` import, no Hermes-specific symbols**. Domain helpers live in the app.
 
-Patterns extra:
-- **Notificar al parent**: no `useEffect(() => onChange(x), [x])`. Llama `onChange` en el mismo handler que actualiza el state.
-- **Cadenas de effects** (effect A → set → effect B → set → ...) están prohibidas. Deriva inline y batchea las actualizaciones en el handler.
-- **Init de app**: corre a nivel módulo (`if (typeof window !== 'undefined') {...}`), no en effect.
+## packages/core-shared
 
-Única excepción conocida: `components/ui/shell-dialog.tsx` tiene 3 useEffect para portal target / animation frame / escape key listener (legítimo mount-time DOM sync, pero debería migrarse a `useMountEffect` o callback ref cuando se toque).
+Framework-level types only:
+- `schemas.ts` — `chatRequestSchema` (Zod) + `ChatRequest`, `ChatResponse`, `SSEEvent` types
+- `scheduling.ts` — `TaskRunStatus`, `scheduledTaskSchema`, `isValidCronExpr()`
 
-Regla resumen: si vas a escribir `useEffect` fuera de un custom hook, para y reescribe el flujo.
+**Still temporarily here** (blocked by core-web cockpit widgets until Phase 3d):
+- `phases.ts` — 13 import phases (`PHASES`, `PHASE_STEPS`, `PHASE_EXECUTION`, `requiresHumanApproval`)
+- `costing.ts` — `COSTING_FIELDS`, `CostingBreakdown`, `computeEstimated`, `computeActualFromPayments`, `mergeActual`
 
-### packages/shared
+These move to `examples/hermes/app/shared/` once `orderSnapshot.ts` and `Costing.tsx` migrate.
 
-Tipos y constantes compartidas entre gateway, mcp y web:
-- `phases.ts` — `PHASE_STEPS`, `PHASE_EXECUTION` (qué steps requieren human approval), phase enum (13 fases).
-- `schemas.ts` — Zod schemas comunes.
-- `costing.ts` — tipos del breakdown de costeo.
-- `documents.ts` — `DocumentKind` enum (proforma_invoice, commercial_invoice, packing_list, certificate_of_origin, form_f, bill_of_lading, forwarder_invoice, customs_funds_provision, port_invoice, din, msds, other).
-- `incoterms.ts`, `payments.ts`, `samples.ts`, `scheduling.ts`, `tlc.ts`, `constants.ts`.
-- Tests: `constants.test.ts`, `workflow.test.ts`.
+## packages/core-web
 
-## Dominio
+React SPA. Still monolithic — not yet split into library + app (Phase 3d pending).
 
-- **State machine a nivel item** (`order_items`, no order). 13 fases: `sourcing → negotiation → preliminary_costing → forwarder_quotation → final_costing → purchase_order → production → documentation → shipping → customs_cl → last_mile → received → closed`. `orders.current_phase` es derivada por trigger `order_items_phase_sync` + función `recompute_order_phase()` (MIN de items activos, no cancelled).
-- **Historial de transiciones**: tabla `phase_transitions` registra cada `advance_step` (from_phase, to_phase, from_step, to_step, actor: `agent|user|subagent`, reason, evidence JSONB, ts).
-- **Gates humanos** (enforced en `workflow.ts::advance_step`): si `PHASE_EXECUTION[phase][step].requiresHumanApproval` y `actor != 'user'`, se rechaza. El agente llama `request_human_approval` y espera `advance_step(actor='user')`.
-- **Pedidos consolidados multi-proveedor**: un solo `order` + items con `supplier_id` distinto cada uno. `orders.supplier_id` es el supplier principal del BL consolidado. La UI agrupa items por supplier en el cockpit.
-- **Ingesta retroactiva**: al cargar un pedido ya avanzado, el agente corre `get_item_state` + `advance_step` repetidamente hasta el primer step sin evidencia (ver `skills/hermes-orders/SKILL.md`).
-- **Sin subagents**: toda la lógica se ejecuta en el agente principal usando skills. El directorio `agents/` existe con 5 prompts role-based (customs-researcher, email-processor, inventory-reorder, orders-specialist, sourcing-researcher) pero **NO** se cargan ni usan — legacy. No se usa Agent tool ni Task tool.
+**Library-like modules that will become public exports**:
+- `lib/define-widget.ts` — `defineWidget`, `WidgetDefinition`, `ShellContext`, `buildWidgetRegistry`
+- `components/Shell.tsx` — the shell component (342 lines, reads from widget registry)
+- `components/shell/{Toolbar,FocusView,EmptyState,types,persistence,catalog}.tsx|ts` — shell internals
+- `hooks/` — `useAuth`, `useData`, `useMountEffect`, `useTheme`
+- `lib/` — `api.ts`, `config.ts`, `supabase.ts`, `drag.ts`, `widgetCache.ts`, `utils.ts`
 
-## Supabase (schema)
+**Hermes-specific (will move to `examples/hermes/web/` in Phase 3d)**:
+- `components/widgets/*` — 27 widget files (9 general + 10 order cockpit + 3 product cockpit + modals)
+- `components/shell/widgets-registry.tsx` — 20 `defineWidget` entries wiring Hermes widgets
+- `components/widgets/agent/` — render_ui runtime (could arguably be framework, keep for now)
+- `pages/` — 9 pages (Chat, Admin, Onboarding, Login, etc.)
+- `App.tsx`, `main.tsx`, `index.css`, `index.html`
+- `lib/orderSnapshot.ts` — Hermes order markdown builder
 
-~35 tablas organizadas por dominio. Legacy `001–010` (numérico) + migraciones timestamp desde `20260407*`. **Nunca usar prefix numérico** para nuevas migraciones.
+## Extension points
 
-**Dominios clave**:
-- **Auth/multi-tenant**: `profiles` (FK auth.users.id), `companies`, `company_users` (role: `admin|client`), `gmail_tokens`. Helper functions `SECURITY DEFINER`: `get_user_company_ids()` y `is_company_admin(cid)` para evitar recursión en RLS.
-- **Orders**: `orders`, `order_items` (state machine aquí: `current_phase`, `current_step`, `on_hold`, `blocked_reason`, `cancelled`), `order_events`, `phase_transitions` (audit log del state machine).
-- **Catalog**: `products`, `suppliers`, `product_suppliers` (multi-proveedor con `unit_price`, `moq`, `lead_time_days`, `is_preferred`), `product_alternatives` (resultados Alibaba), `samples`.
-- **Docs/payments/costing**: `documents` (con `kind` enum y `extracted` JSONB), `payments` (linked_document_id ↔ documents.linked_payment_id circular), `costings` (`estimated`/`actual` JSONB breakdown), `costing_defaults` (tabla de referencia con flete/aranceles/IVA hardcoded para Chile).
-- **Ops**: `inventory` (reserved/in_transit/available), `inventory_adjustments`, `reorder_rules`, `contacts` (role: forwarder|customs_agent|supplier|other, override por orden), `order_findings`.
-- **Scheduling & mail**: `scheduled_tasks` (cron_expr, timezone, prompt, session_key, `next_run_at` canonical), `task_runs`, `mail_threads`, `mail_messages` (dedup por Message-ID).
-- **Agent config**: `agent_definitions`, `skill_definitions` (con `content`, `depends[]`, `fork_agent`).
+### defineTool (MCP tools)
 
-**RLS**: activado en todas las tablas de dominio. Patrón: `company_id IN (SELECT get_user_company_ids())` para SELECT/INSERT, `is_company_admin(company_id)` para ALL. Excepciones: `profiles` (auto-acceso), `gmail_tokens` (owner only), `skill_definitions`/`costing_defaults` (read autenticado).
+```ts
+// examples/hermes/app/tools/items.ts
+import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
+import { z } from 'zod'
 
-**Extensions**: `pg_cron` (tick cada minuto) + `pg_net` (llama gateway `/cron/tick` desde la DB via `hermes_cron_tick()`).
+export default [
+  defineTool({
+    name: 'create_order_item',
+    description: 'Crea un item dentro de un pedido.',
+    schema: {
+      order_id: z.string(),
+      company_id: z.string(),
+      description: z.string(),
+      // ...
+    },
+    handler: async (args) => {
+      const db = getSupabase()
+      const { data, error } = await db.from('order_items').insert(args).select().single()
+      return error ? err(error.message) : json(data)
+    },
+  }),
+]
+```
 
-**Deuda conocida**:
-- Duplicados legacy: `orders.incoterm` (text) + `orders.incoterm_typed` (enum), `documents.doc_type` + `documents.kind`.
-- `orders.supplier_name`/`supplier_contact` legacy coexisten con FK `supplier_id`.
-- `costing_defaults` hardcoded para Chile (no multi-país).
-- FK circular `documents.linked_payment_id ↔ payments.linked_document_id` sin `DEFERRABLE`.
-- Sin storage bucket DDL en migraciones (configurado manual).
+**All 89 Hermes tools use this shape** across 19 files in `examples/hermes/app/tools/`. Each file exports `default [defineTool(...), ...]` (array of definitions). `tools/index.ts` concatenates all arrays into `ALL_APP_TOOLS` and calls `registerTools(server, ALL_APP_TOOLS)`.
+
+**Adding a new tool**: see `.claude/skills/proto-tool/SKILL.md`.
+
+### defineWidget (Shell widgets)
+
+```ts
+// packages/core-web/src/components/shell/widgets-registry.tsx
+import { defineWidget } from '@/lib/define-widget'
+
+export const WIDGETS = [
+  defineWidget({
+    type: 'orders',
+    title: 'Pedidos',
+    icon: '📦',
+    category: 'general',
+    defaultSize: { w: 3, h: 4, minW: 2, minH: 3 },
+    render: (_, ctx) => (
+      <OrdersWidget
+        companyId={ctx.companyId}
+        refreshKey={ctx.refreshKey}
+        onSelectOrder={(id, label) => ctx.onActivateEntity?.({ type: 'order', id, label })}
+        onSendToChat={ctx.onSendToChat}
+        onCreateOrder={() => ctx.openCreateOrder()}
+      />
+    ),
+  }),
+  // ... 19 more
+]
+```
+
+**`ShellContext`** (from `lib/define-widget.ts`) is the shared context every widget receives:
+```ts
+interface ShellContext {
+  companyId: string
+  refreshKey: number
+  activeEntity: ActiveEntity | null
+  onSendToChat: (msg: string) => void
+  onActivateEntity?: (e: ActiveEntity) => void
+  onDeactivateEntity?: () => void
+  onCloseTab?: (e: ActiveEntity) => void
+  cartItems: CartItem[]
+  addToCart: (item: CartItem) => void
+  openCreateOrder: (product?: { id: string; name: string }) => void
+  openCreateProduct: () => void
+  triggerLocalRefresh: () => void
+}
+```
+
+Shell builds `shellCtx` once per render via `useMemo` and loops: `WIDGET_REGISTRY.get(widget.type)?.render(widget, shellCtx)`. No hardcoded switch.
+
+**Adding a new widget**: see `.claude/skills/proto-widget/SKILL.md`.
+
+### Future: defineEntity, defineWorkflow, defineChannel
+
+Phase 3e–3f will add these. `defineEntity` collapses the `activate_X` / cockpit layout / snapshot builder triad into a single declaration. `defineWorkflow` generates state machine tools from a YAML declaration. Not yet implemented.
+
+## Rules
+
+### NO `useEffect` directo en componentes
+
+Prohibido llamar `useEffect` directo en componentes de React. Solo puede aparecer dentro de hooks reusables (`useMountEffect`, `useData`, etc). Checklist antes de escribir un effect:
+
+1. **¿Se puede derivar durante el render?** → inline o `useMemo`.
+2. **¿Lo dispara una acción del usuario?** → event handler.
+3. **¿Fetch de data?** → `useData(fetcher)` con AbortController.
+4. **¿Store externo?** → `useSyncExternalStore`.
+5. **¿Reset on prop change?** → `key={id}`, no effect.
+6. **¿True mount-time external sync?** → `useMountEffect(() => {...})`.
+7. **¿Ref para controlar cuándo corre?** → el effect es el bug, reescribí el flujo.
+8. **¿DOM side effect on mount?** → callback ref.
+
+Única excepción conocida: `components/ui/shell-dialog.tsx` tiene 3 useEffect (portal + escape key + animation frame). Se migra a `useMountEffect` cuando se toque.
+
+### Domain-agnostic core
+
+Core packages NO deben importar del app. Grep check: `grep -r 'orders\|products\|supplier\|phases' packages/core-*/src/` debe retornar solo menciones genéricas (variables, comentarios). Cuando hagas un refactor en core, chequeá que no filtre concepts del dominio.
+
+### Tool context via ctx, not args
+
+Tools que necesiten `company_id`, `user_id`, `active_order` deben leerlo del contexto de la sesión, **no como parámetro del agente**. Hoy los 89 tools de Hermes aún reciben `company_id` como arg (legacy). Al agregar un tool nuevo, preferí leer de env o del estado de la sesión, no de args.
+
+### File size limits
+
+Ningún archivo de tool/componente debería pasar ~400 líneas. Splits actuales pendientes:
+- `examples/hermes/app/pages/Admin.tsx` (1286L) — agentes + tareas + config
+- `examples/hermes/app/pages/Chat.tsx` (553L) — WS + queue + attachments
+- `packages/core-web/src/components/shell/widgets-registry.tsx` (280L) — OK por ahora, se divide en Phase 3d
+
+### Naming conventions
+
+- React widgets y components → `PascalCase.tsx`
+- shadcn primitives (`components/ui/`) → `kebab-case.tsx`
+- MCP tool files → `kebab-case.ts`
+- Skills/agents dirs → `kebab-case`
+- Helpers internos prefijados `_` (ej. `_helpers.ts`, `_hermes-helpers.ts`)
+
+### Config env vars
+
+- Gateway: todo `process.env` pasa por `packages/core-gateway/src/config.ts`
+- Web: todo `import.meta.env.VITE_*` pasa por `packages/core-web/src/lib/config.ts`
+- MCP: lee `process.env` directo (sin capa centralizada por ahora)
+
+## Supabase
+
+30 migraciones en `examples/hermes/supabase/migrations/`:
+- 10 legacy numeric (`001_*.sql` a `010_*.sql`)
+- 20 timestamp (`20260407*` en adelante)
+
+**Nuevas migraciones siempre con prefix timestamp** (`YYYYMMDDHHMMSS_name.sql`). No crear con numeric prefix.
+
+**Multi-tenant** enforced via RLS: `company_id IN (SELECT get_user_company_ids())`. Helper functions `SECURITY DEFINER`: `get_user_company_ids()`, `is_company_admin(cid)`. Todas las tablas de dominio tienen RLS activado.
+
+**State machine** en `order_items` table (`current_phase`, `current_step`, flags). Historial en `phase_transitions`. Trigger `order_items_phase_sync` + función `recompute_order_phase()` derivan `orders.current_phase`.
+
+**Pg extensions**: `pg_cron` + `pg_net` para que la DB llame `hermes_cron_tick()` → gateway `/cron/tick` cada minuto.
 
 ## Channels
 
-Hermes tiene **dos** integraciones de mail distintas, no confundir:
+Hermes usa **dos** integraciones de mail:
 
-1. **Gmail OAuth per-user** (`mcp/tools/gmail.ts` + `gateway/routes/gmail.ts`): cada usuario conecta su Gmail via `/gmail/auth`, tokens en tabla `gmail_tokens`. Tools: `gmail_status`, `read_emails`, `search_emails`, `send_email`. Env: `GMAIL_CLIENT_ID/SECRET/REDIRECT_URI`.
+1. **Gmail OAuth per-user** (`tools/gmail.ts` + `routes/gmail.ts`): cada user conecta su Gmail. Tokens en `gmail_tokens` table. Tools: `gmail_status`, `read_emails`, `search_emails`, `send_email`.
 
-2. **Hermes system mail (SMTP + IMAP poller)** — channel mail-as-chat. Un mailbox único del sistema envía notificaciones outbound (`email-sender.ts`) y un IMAP poller (`mail-ingester.ts`) lee replies para que el agente las procese como mensajes de chat, con threads via `mail-threads.ts` y routing a company via `mail-router.ts`. Env: `HERMES_SMTP_HOST/PORT/USER/PASS/FROM/REPLY_TO` + `HERMES_IMAP_HOST/PORT/POLL_MS` (IMAP user/pass default al SMTP). En dev usa Ethereal (`smtp.ethereal.email`), en prod Gmail SMTP/IMAP. Desactivar inbound unsetting `HERMES_IMAP_HOST`.
+2. **Hermes system mail (SMTP + IMAP)**: mailbox único del sistema envía notificaciones y un IMAP poller lee replies para que el agente las procese como mensajes de chat. Code en `core-gateway/src/{email-sender,mail-ingester,mail-router,mail-threads}.ts`. Env: `HERMES_SMTP_*` + `HERMES_IMAP_*`.
 
-Además: **WhatsApp** vía prompt dedicado (`prompts/whatsapp.md`) — el gateway resuelve `request.channel === 'whatsapp' ? 'whatsapp' : 'default'` en `skills.ts`.
-
-## Stack
-
-- TypeScript, npm workspaces
-- Hono (gateway), @modelcontextprotocol/sdk (MCP), React + Vite + react-grid-layout (web)
-- Supabase (Postgres, Auth, Storage, Realtime) — proyecto linked via `supabase/`
-- Claude Code CLI como orquestador (suscripción, no API keys)
-- `croner` (cron in-process), `nodemailer` (SMTP), `imapflow` (IMAP), `googleapis` (Gmail)
+Plus **WhatsApp** via prompt dedicado (`prompts/whatsapp.md`), switchable via `request.channel === 'whatsapp'` en `skills.ts::buildSystemPrompt`.
 
 ## Deploy
 
-**Docker Compose** con DOS servicios:
-- `hermes-mcp` (`server-http.ts`, puerto **8093**) — MCP server HTTP
-- `hermes-agent` (`gateway/server.ts`, puerto **8092**) — wrappea Claude Code CLI, se conecta a hermes-mcp:8093
+Docker Compose con 2 servicios:
+- `hermes-mcp` (puerto 8093) — corre `examples/hermes/app/mcp-http.ts` con tsx
+- `hermes` / agent (puerto 8092) — corre `packages/core-gateway/src/server.ts` con tsx, depende de hermes-mcp
 
-El web app corre local en dev (`npm run dev:web`), no está dockerizado. Railway usa el mismo `Dockerfile` (builder config en `railway.toml`, healthcheck `/health`).
+Ambos leen `PROTO_APP_ROOT=/app/examples/hermes`. El web app corre local en dev (`npm run dev:web`) y se conecta via `VITE_GATEWAY_URL`.
 
 ```bash
-docker compose up -d --build   # build + start mcp + agent
-docker compose logs -f         # logs combinados
-docker compose restart         # restart sin rebuild
+docker compose up -d --build    # build + start ambos servicios
+docker compose logs -f agent    # logs del gateway
+docker compose restart
 ```
 
-El compose monta volúmenes para credenciales de Claude (`CLAUDE_CONFIG_DIR`) y `/data/sessions/` persistente. `entrypoint.sh` pre-crea `/data` dirs y verifica auth de Claude antes de arrancar.
+Railway deploya via `Dockerfile` (healthcheck `/health`, config en `railway.toml`).
 
 ## Comandos
 
 ```bash
-npm test                # Vitest (vitest.config.ts root)
-npm run test:watch      # Vitest watch mode
-npm run dev:gateway     # Gateway local (puerto 8092 via .env)
-npm run dev:web         # Web app (http://localhost:3001)
-npm run build           # shared → mcp → gateway → web (sequencial)
-supabase db push        # aplicar migraciones al proyecto linked (CLI, no npm script)
+npm test                # Vitest (root vitest.config.ts)
+npm run dev:gateway     # PROTO_APP_ROOT=examples/hermes + tsx watch
+npm run dev:web         # Vite http://localhost:3001
+npm run build           # core-shared → core-mcp → core-gateway → core-web
+cd examples/hermes && supabase db push    # aplicar migraciones
 ```
 
-## Convenciones
+**Smoke test local del MCP** (útil cuando tocás tools):
+```bash
+npx tsx -e "
+import { createMcpServer } from '@proto/core-mcp'
+import { registerAppTools } from './examples/hermes/app/tools/index.ts'
+const s = createMcpServer({ name: 'hermes', version: '0.1.0' })
+registerAppTools(s)
+console.log('tools:', Object.keys((s as any)._registeredTools).length)
+"
+# debería imprimir: tools: 89
+```
 
-- **Naming archivos**:
-  - Widgets y componentes React → `PascalCase.tsx`
-  - Primitives shadcn (`components/ui/`) → `kebab-case.tsx`
-  - Tools MCP → `kebab-case.ts`
-  - Skills/agents → `kebab-case`
-  - Helpers internos prefijados con `_` (ej: `tools/_helpers.ts`)
-- **Migraciones SQL**: nuevas migraciones SIEMPRE con prefix timestamp (`YYYYMMDDHHMMSS_name.sql`). No crear con prefix numérico — existe legacy `001–010` pero ya no se agregan más.
-- **Tamaños de archivo**: ningún archivo de tool/componente debería pasar ~400 líneas. Split por sub-dominio. Archivos actualmente por encima: `pages/Admin.tsx` (1286L), `pages/Chat.tsx` (553L), `pages/Onboarding.tsx` (356L), `components/Shell.tsx` (399L), `tools/workflow.ts` (355L) — candidatos a refactor.
-- **Config env**: todo lookup de `import.meta.env.VITE_*` pasa por `packages/web/src/lib/config.ts`. Todo lookup de `process.env` del gateway pasa por `packages/gateway/src/config.ts`. MCP lee directo `process.env` (sin capa centralizada).
+## Migration status
 
-## Frontend notes
+El repo está en medio de una migración desde la forma monolítica "hermes-el-producto" a "proto framework + hermes example app". 8 fases terminadas, 4 pendientes:
 
-- Chat panel width default 480px (rango 360–640).
-- Cola de mensajes (Chat.tsx): si llega un mensaje mientras el agente responde, queda encolado y se envía al terminar el turno. No se bloquea el input.
-- Attachments: imágenes y PDFs via `ChatInput`. Se suben a gateway (`/upload`) y a Supabase Storage; el agente los procesa con `Read` tool.
-- Cockpit mode: se activa automáticamente cuando `activeEntity` está set. El agente llama `activate_order`/`deactivate_order` para sincronizar sesión + context, y la UI responde al cambio de `activeEntity` en App.tsx (localStorage).
-- WebSocket session keys: `web` (general), `order-{id}`, `product-{id}`. El gateway usa cada uno como session_key para persistir `.claude-session-id` y hacer `--resume`.
-- Rate limiter del gateway está **DESACTIVADO**. Reactivar antes de lanzamiento multi-tenant.
+| Fase | Estado | Qué hizo / hace |
+|---|---|---|
+| baseline | ✅ | Copia de hermes |
+| 1 | ✅ | Rename packages → core-* |
+| 2a | ✅ | Move skills/agents/prompts/supabase/project.yaml → examples/hermes/, agregar `PROTO_APP_ROOT` |
+| 2b | ✅ | MCP tools → examples/hermes/app/tools/, core-mcp se vuelve library |
+| 2c | ✅ | Split core-shared: tipos Hermes → app/shared/, isValidStep → app |
+| 3a1 | ✅ | `defineTool` API + pilot en items.ts |
+| 3a2 | ✅ | Batch migrate 89 tools al nuevo shape |
+| 3c | ✅ | `defineWidget` API + widget registry, Shell refactor |
+| **3d** | ⏳ | **Split core-web** en library + `examples/hermes/web/`. Mueve widgets, pages, App.tsx, main.tsx, orderSnapshot, Costing widget. Desbloquea mover `phases.ts` y `costing.ts` fuera de core-shared. |
+| 3e | ⏳ | `defineEntity` API — colapsa active-order tool + cockpit layouts + snapshot builder en una sola declaración |
+| 3f | ⏳ | `defineWorkflow` / `phases.yaml` — state machine parametrizable |
+| 3g | ⏳ | `create-proto-app` scaffolder + más framework skills |
 
-## Multi-empresa
+**Historia Git**:
+```
+1f1a3b9 phase 3c: defineWidget API + widget registry for Shell
+b22c1cb phase 3a2: migrate remaining 18 tool files to defineTool
+c18238e phase 3a1: defineTool API + items.ts pilot
+672d7c5 phase 2c: split core-shared — move Hermes domain types to app
+ae8018b phase 2b: carve out MCP tools to examples/hermes/app/
+13c9660 phase 2a: move hermes assets to examples/hermes/
+35b4a78 phase 1: rename packages/{gateway,mcp,web,shared} → packages/core-*
+630c459 baseline: copy of hermes as starting point for proto framework
+```
 
-- **Admin** (owner) ve todas sus empresas (selector en header del chat).
-- **Client** ve solo su empresa.
-- **RLS en Supabase** enforza aislamiento a nivel query, via `get_user_company_ids()` + `is_company_admin()`.
-- **Gateway** aisla sesiones Claude CLI por `company_id` + `session_key` (SHA256 → directorio en `/data/sessions/`).
-- **MCP** bypassa RLS con service role key — **cada tool DEBE validar `company_id` manualmente** en la query.
-- **Auth del gateway**: header `x-internal-secret` compartido (no JWT). El frontend lo pasa en cada request/WS.
+**Known blockers** (resolverán en Phase 3d):
+- `packages/core-shared/src/phases.ts` aún importado por `core-web/src/lib/orderSnapshot.ts`
+- `packages/core-shared/src/costing.ts` aún importado por `core-web/src/components/widgets/cockpit/order/Costing.tsx`
+- `packages/core-web/` aún tiene widgets + pages Hermes-específicos
 
-## Skills
+## Framework skills (para Claude Code local)
 
-Todo el conocimiento del dominio vive en `skills/`. No hay subagents — el agente principal carga los skills que necesita y ejecuta todo directamente con MCP tools. El directorio `agents/` es legacy y no se usa.
+Viven en `.claude/skills/proto-*/SKILL.md`. Cargan cuando Claude Code CLI trabaja en este repo. **No** son domain skills del agente en runtime — esos viven en `examples/hermes/app/skills/`.
 
-Cada skill es un directorio con `SKILL.md` (YAML frontmatter + markdown). Frontmatter declara: `name`, `description`, `mcp-tools[]` (tools que puede invocar), `depends[]` (otros skills). El gateway resuelve dependencias transitivas al cargar.
+- `proto-tool` — cómo agregar un MCP tool nuevo via `defineTool`
+- `proto-widget` — cómo agregar un widget al Shell via `defineWidget`
+- (coming) `proto-entity`, `proto-workflow`, `proto-migration`, `proto-scaffold`, `proto-debug`, `proto-deploy`
 
-Skills disponibles:
-- `hermes-intake` — recopilación de info para nueva importación (create_order, create_product)
-- `hermes-orders` — state machine de pedidos (advance_step, get_item_state, costeo, pagos)
-- `hermes-products` — catálogo de productos (CRUD, product_suppliers)
-- `hermes-documents` — gestión documental (attach_document, validación por fase)
-- `hermes-customs-cl` — aduana Chile (TLC, aranceles, DIN)
-- `hermes-deep-research` — investigación exhaustiva (proveedores, normativa)
-- `hermes-gmail` — correo del usuario (read_emails, send_email)
-- `hermes-inventory` — control de stock por producto
-- `hermes-reorders` — reglas de recompra automática
-- `hermes-company` — gestión de empresa y onboarding
-- `hermes-scheduling` — tareas programadas (cron jobs)
+Cuando `create-proto-app` scaffolder exista (Phase 3g), copiará estos skills al repo nuevo de cada app como starting point editable.
