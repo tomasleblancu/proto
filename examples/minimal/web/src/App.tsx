@@ -1,27 +1,15 @@
-import { ProtoApp, defineWidget } from '@proto/core-web'
-import { ENTITIES } from '@app/entities/index.js'
-import ItemsWidget from './widgets/ItemsWidget'
-import ItemDetailWidget from './widgets/ItemDetailWidget'
+import { ProtoApp } from '@proto/core-web'
+import type { WidgetDefinition } from '@proto/core-web'
+import type { EntityDefinition } from '@proto/core-shared'
 
-const WIDGETS = [
-  defineWidget({
-    type: 'items',
-    title: 'Items',
-    icon: '📋',
-    category: 'general',
-    defaultSize: { w: 4, h: 5, minW: 2, minH: 3 },
-    render: (_, ctx) => <ItemsWidget {...ctx} />,
-  }),
-  defineWidget({
-    type: 'item-detail',
-    title: 'Item Detail',
-    icon: '🔍',
-    category: 'cockpit',
-    defaultSize: { w: 6, h: 4, minW: 3, minH: 3 },
-    render: (_, ctx) => <ItemDetailWidget {...ctx} />,
-  }),
-]
+const widgetMods = import.meta.glob('./widgets/*.tsx', { eager: true }) as Record<string, { default: WidgetDefinition }>
+const WIDGETS = Object.values(widgetMods).map(m => m.default).filter(Boolean)
+
+const entityMods = import.meta.glob('../../app/entities/*.ts', { eager: true }) as Record<string, { default: EntityDefinition }>
+const ENTITIES = Object.values(entityMods)
+  .map(m => m.default)
+  .filter((e): e is EntityDefinition => !!e && typeof e === 'object' && 'name' in e)
 
 export default function App() {
-  return <ProtoApp widgets={WIDGETS} entities={[...ENTITIES]} />
+  return <ProtoApp widgets={WIDGETS} entities={ENTITIES} />
 }

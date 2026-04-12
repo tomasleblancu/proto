@@ -1,5 +1,14 @@
-import { useData, supabase, Card, CardContent, CardHeader } from '@proto/core-web'
+import { defineWidget, useData, supabase, Card, CardHeader, CardContent } from '@proto/core-web'
 import type { ShellContext } from '@proto/core-web'
+
+export default defineWidget({
+  type: 'items',
+  title: 'Items',
+  icon: '📋',
+  category: 'general',
+  defaultSize: { w: 4, h: 5, minW: 2, minH: 3 },
+  render: (_, ctx) => <Items {...ctx} />,
+})
 
 interface Item {
   id: string
@@ -8,7 +17,7 @@ interface Item {
   created_at: string
 }
 
-export default function ItemsWidget({ companyId, refreshKey, onActivateEntity }: ShellContext) {
+function Items({ companyId, refreshKey, onActivateEntity }: ShellContext) {
   const { data: items, loading } = useData<Item[]>(
     async () => {
       const { data } = await supabase

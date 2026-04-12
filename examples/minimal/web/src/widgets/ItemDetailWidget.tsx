@@ -1,5 +1,14 @@
-import { useData, supabase, Card, CardContent, CardHeader } from '@proto/core-web'
+import { defineWidget, useData, supabase, Card, CardContent, CardHeader } from '@proto/core-web'
 import type { ShellContext } from '@proto/core-web'
+
+export default defineWidget({
+  type: 'item-detail',
+  title: 'Item Detail',
+  icon: '🔍',
+  category: 'cockpit',
+  defaultSize: { w: 6, h: 4, minW: 3, minH: 3 },
+  render: (_, ctx) => <ItemDetail {...ctx} />,
+})
 
 interface Item {
   id: string
@@ -9,17 +18,13 @@ interface Item {
   updated_at: string
 }
 
-export default function ItemDetailWidget({ activeEntity, refreshKey }: ShellContext) {
+function ItemDetail({ activeEntity, refreshKey }: ShellContext) {
   const itemId = activeEntity?.type === 'item' ? activeEntity.id : null
 
   const { data: item, loading } = useData<Item | null>(
     async () => {
       if (!itemId) return null
-      const { data } = await supabase
-        .from('items')
-        .select('*')
-        .eq('id', itemId)
-        .single()
+      const { data } = await supabase.from('items').select('*').eq('id', itemId).single()
       return data
     },
     [itemId, refreshKey],
