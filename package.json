@@ -1,8 +1,10 @@
 {
-  "name": "proto",
+  "name": "proto-monorepo",
   "private": true,
   "workspaces": [
-    "packages/*",
+    "packages/proto",
+    "packages/core-gateway",
+    "packages/create-proto-app",
     "examples/*",
     "examples/*/web"
   ],
@@ -10,7 +12,7 @@
     "dev:gateway": "PROTO_APP_ROOT=examples/hermes npm run dev -w packages/core-gateway",
     "dev:web": "npm run dev -w @proto-app/hermes-web",
     "dev:minimal-web": "npm run dev -w @proto-app/minimal-web",
-    "build": "npm run build -w packages/core-shared && npm run build -w packages/core-mcp && npm run build -w packages/core-gateway && npm run build -w packages/core-web && npm run build -w @proto-app/hermes-web && npm run build -w @proto-app/minimal-web",
+    "build": "npm run build -w packages/proto && npm run build -w packages/core-gateway && npm run build -w @proto-app/hermes-web && npm run build -w @proto-app/minimal-web",
     "test": "vitest run",
     "test:watch": "vitest"
   },

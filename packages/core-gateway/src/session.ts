@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync, existsSync, readdirSync, copyFileSync, statSync, rmSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { createHash } from 'node:crypto'
-import type { ChatRequest } from '@proto/core-shared'
+import type { ChatRequest } from 'proto/shared'
 import { config } from './config.js'
 import { buildSystemPrompt } from './skills.js'
 import { loadSkills, loadAgents, type Skill, type Agent } from './registry.js'

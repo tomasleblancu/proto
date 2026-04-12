@@ -1,6 +1,6 @@
-import { ProtoApp } from '@proto/core-web'
-import type { WidgetDefinition } from '@proto/core-web'
-import type { EntityDefinition } from '@proto/core-shared'
+import { ProtoApp } from 'proto/web'
+import type { WidgetDefinition } from 'proto/web'
+import type { EntityDefinition } from 'proto/shared'
 
 const widgetMods = import.meta.glob('./widgets/*.tsx', { eager: true }) as Record<string, { default: WidgetDefinition }>
 const WIDGETS = Object.values(widgetMods).map(m => m.default).filter(Boolean)

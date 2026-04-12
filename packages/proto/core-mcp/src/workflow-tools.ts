@@ -14,7 +14,7 @@ import { z } from 'zod'
 import type {
   WorkflowDefinition,
   WorkflowPhase,
-} from '@proto/core-shared'
+} from 'proto/shared'
 import {
   workflowPhaseNames,
   workflowPhaseSteps,
@@ -22,7 +22,7 @@ import {
   workflowIsValidStep,
   workflowRequiresHumanApproval,
   workflowExecution,
-} from '@proto/core-shared'
+} from 'proto/shared'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { defineTool, registerTools, type ToolDefinition } from './define-tool.js'
 import { getSupabase } from './supabase.js'

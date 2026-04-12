@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { supabase } from '@proto/core-web'
-import { Skeleton } from '@proto/core-web'
-import { cacheGet, cacheSet } from '@proto/core-web'
-import { useData } from '@proto/core-web'
+import { supabase } from 'proto/web'
+import { Skeleton } from 'proto/web'
+import { cacheGet, cacheSet } from 'proto/web'
+import { useData } from 'proto/web'
 import {
   MailIcon, FileTextIcon, AlertCircleIcon, DollarSignIcon,
   TruckIcon, UserPlusIcon, InfoIcon, SparklesIcon, PencilIcon,

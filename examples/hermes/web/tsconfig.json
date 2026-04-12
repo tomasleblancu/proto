@@ -14,10 +14,10 @@
     "paths": {
       "@/*": ["./src/*"],
       "@app/*": ["../app/*"],
-      "@proto/core-web": ["../../../packages/core-web/src"],
-      "@proto/core-web/*": ["../../../packages/core-web/src/*"],
-      "@proto/core-shared": ["../../../packages/core-shared/src"],
-      "@proto/core-shared/*": ["../../../packages/core-shared/src/*"]
+      "proto/web": ["../../../packages/proto/core-web/src"],
+      "proto/web/*": ["../../../packages/proto/core-web/src/*"],
+      "proto/shared": ["../../../packages/proto/core-shared/src"],
+      "proto/shared/*": ["../../../packages/proto/core-shared/src/*"]
     }
   },
   "include": ["src"]

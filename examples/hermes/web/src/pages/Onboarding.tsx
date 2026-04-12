@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import type { User } from '@supabase/supabase-js'
-import { supabase } from '@proto/core-web'
-import { Button } from '@proto/core-web'
-import { Input } from '@proto/core-web'
-import { Card, CardContent, CardHeader } from '@proto/core-web'
-import { Avatar, AvatarFallback } from '@proto/core-web'
+import { supabase } from 'proto/web'
+import { Button } from 'proto/web'
+import { Input } from 'proto/web'
+import { Card, CardContent, CardHeader } from 'proto/web'
+import { Avatar, AvatarFallback } from 'proto/web'
 
 interface Profile {
   full_name: string | null

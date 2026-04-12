@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool } from '@proto/core-mcp'
+import { defineTool } from 'proto/mcp'
 
 export default [
   defineTool({

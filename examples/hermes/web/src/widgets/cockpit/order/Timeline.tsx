@@ -1,7 +1,7 @@
-import { supabase } from '@proto/core-web'
-import { Skeleton } from '@proto/core-web'
-import { cacheGet, cacheSet } from '@proto/core-web'
-import { useData } from '@proto/core-web'
+import { supabase } from 'proto/web'
+import { Skeleton } from 'proto/web'
+import { cacheGet, cacheSet } from 'proto/web'
+import { useData } from 'proto/web'
 import { BaseProps, formatAgo } from './shared'
 
 export function OrderTimelineWidget({ orderId, refreshKey }: BaseProps) {

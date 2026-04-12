@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { config, CLAUDE_MODEL, MAX_TURNS, TIMEOUT_SECONDS } from './config.js'
 import { prepareSession, syncCredentialsBack } from './session.js'
-import type { ChatRequest, ChatResponse, SSEEvent } from '@proto/core-shared'
+import type { ChatRequest, ChatResponse, SSEEvent } from 'proto/shared'
 
 function buildAllowedTools(): string {
   const baseTools = ['Bash', 'Read']

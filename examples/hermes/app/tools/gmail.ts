@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool, getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase } from 'proto/mcp'
 
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || ''
 const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || ''

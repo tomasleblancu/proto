@@ -1,4 +1,4 @@
-import { createProtoMcp } from '@proto/core-mcp'
+import { createProtoMcp } from 'proto/mcp'
 import { setActiveOrder } from './activeOrder.js'
 
 const app = await createProtoMcp({ name: 'hermes' })

@@ -16,14 +16,9 @@ El Shell es el canvas derecho que acompaña al chat. Muestra widgets en un grid 
 - "creá un widget cockpit para cuando hay una factura activa"
 - "mostrame cómo agregar un widget"
 
-## Dos partes: componente + registro
+## Un solo archivo
 
-Agregar un widget son **dos pasos**:
-
-1. **Escribir el componente React** en `components/widgets/<Name>Widget.tsx` (o subdirectorio). Recibe props específicos suyos.
-2. **Registrar el widget** agregando una entrada al array en `components/shell/widgets-registry.tsx`. Ahí definís cómo se conecta al `ShellContext`.
-
-Los widget components en sí son React normales — no saben nada de proto. El adapter del registry es quien conecta context compartido → props específicos del componente.
+Agregar un widget es **un solo paso**: crear un archivo en `web/src/widgets/<Name>Widget.tsx` que exporta `defineWidget()` por default. Se auto-descubre via `import.meta.glob` en `App.tsx` — no hay que registrar nada manualmente.
 
 ## Shape del componente
 
@@ -109,37 +104,36 @@ export const WIDGETS = [
 
 ## ShellContext
 
-El contexto que reciben todos los render callbacks. Vive en `packages/core-web/src/lib/define-widget.ts`:
+El contexto que reciben todos los render callbacks. Vive en `packages/proto/core-web/src/lib/define-widget.ts`:
 
 ```ts
 interface ShellContext {
-  // Identity
   companyId: string
-  refreshKey: number              // re-fetch signal (bump this to force re-render with fresh data)
+  refreshKey: number              // re-fetch signal (bump para re-render con data fresca)
   activeEntity: ActiveEntity | null
 
-  // Chat
   onSendToChat: (message: string) => void
-
-  // Entity navigation
   onActivateEntity?: (e: ActiveEntity) => void
   onDeactivateEntity?: () => void
   onCloseTab?: (e: ActiveEntity) => void
-
-  // Cart (Hermes-specific for now, will move to app ctx extension)
-  cartItems: CartItem[]
-  addToCart: (item: CartItem) => void
-
-  // Dialogs
-  openCreateOrder: (product?: { id: string; name: string }) => void
-  openCreateProduct: () => void
-
-  // Force local refresh (without agent action)
   triggerLocalRefresh: () => void
 }
 ```
 
-**Si necesitás algo nuevo en el ctx** (ej. `openCreateCustomer`), agregalo al interface de `define-widget.ts` Y al `useMemo` que arma `shellCtx` en `Shell.tsx`. Cambio sincronizado en ambos lados.
+**Si tu app necesita campos extra** (ej. `cartItems`, `openCreateOrder`), extendé via module augmentation en un archivo `.d.ts`:
+
+```ts
+// web/src/shell-context.d.ts
+declare module 'proto/web' {
+  interface ShellContext {
+    cartItems: CartItem[]
+    addToCart: (item: CartItem) => void
+  }
+}
+export {}
+```
+
+Y pasá los valores en el `useMemo` que arma `shellCtx` en `Shell.tsx`.
 
 ## Widgets cockpit
 
@@ -208,20 +202,20 @@ defineWidget({
 - ❌ **Widget que hace fetch en `useEffect`** — usá `useData`.
 - ❌ **Widget que lee `localStorage` directo** — hay un `persistence.ts` wrap, usalo.
 - ❌ **Widget que muta `refreshKey` desde adentro** — solo el Shell o `ctx.triggerLocalRefresh()` puede. Los widgets reaccionan, no manipulan.
-- ❌ **Registrar widgets en lugares random** — solo en `widgets-registry.tsx`.
+- ❌ **Registrar widgets en lugares random** — solo en `web/src/widgets/`. Se auto-descubren.
 - ❌ **Acoplar a Hermes concepts específicos** — si estás en proto framework dev, el widget debería ser genérico. Si es Hermes-específico, está OK, pero notá que se va a mover a `examples/hermes/web/widgets/` en Phase 3d.
 - ❌ **Widget cockpit que no chequea `activeEntity.type`** — renderiza basura si se usa fuera de contexto.
 
 ## Checklist antes de cerrar
 
-- [ ] Componente React en `components/widgets/<Name>Widget.tsx`
+- [ ] Componente React en `web/src/widgets/<Name>Widget.tsx`
 - [ ] Props explícitos, sin leer context global
 - [ ] `useData(fetcher, [deps, refreshKey])` en vez de `useEffect`
-- [ ] Entrada en `widgets-registry.tsx` con `defineWidget({...})`
+- [ ] `export default defineWidget({...})` en el archivo
 - [ ] `type` es único (grep para asegurar)
 - [ ] `category: 'general'` si el user lo puede agregar, `'cockpit'` si es programático
 - [ ] `defaultSize` ajustado al contenido esperado (mirá otros widgets similares)
-- [ ] Si es cockpit: agregado a `ORDER_COCKPIT_WIDGETS` o `PRODUCT_COCKPIT_WIDGETS` + layouts en `catalog.ts`
-- [ ] Si necesitás algo nuevo del ctx: extendido el `ShellContext` interface Y el `useMemo` en `Shell.tsx`
+- [ ] Si es cockpit: referenciado en `defineEntity({ cockpit: { widgets, layouts } })` de la entity correspondiente
+- [ ] Si necesitás campos extra en ctx: module augmentation en `web/src/shell-context.d.ts`
 - [ ] `npm run build` pasa
 - [ ] Smoke test visual en el browser

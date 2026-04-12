@@ -2,7 +2,7 @@ import type { Hono } from 'hono'
 import { verifySecret } from '../auth.js'
 import { getSupabase } from '../supabase.js'
 import { tick, dispatchTask, recalcNextRun, computeNextRun, type ScheduledTaskRow } from '../scheduler.js'
-import { isValidCronExpr } from '@proto/core-shared'
+import { isValidCronExpr } from 'proto/shared'
 
 /**
  * Cron control surface. Three responsibilities:

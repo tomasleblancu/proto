@@ -1,10 +1,18 @@
+const { existsSync } = require('fs')
+const { resolve } = require('path')
+
+const monorepoCorePath = resolve(__dirname, '../../../packages/proto/core-web/src')
+const coreWebContent = existsSync(monorepoCorePath)
+  ? `${monorepoCorePath}/**/*.{ts,tsx}`
+  : './node_modules/@proto/core-web/src/**/*.{ts,tsx}'
+
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   darkMode: 'class',
   content: [
     './index.html',
     './src/**/*.{ts,tsx}',
-    '../../../packages/core-web/src/**/*.{ts,tsx}',
+    coreWebContent,
   ],
   theme: {
     extend: {

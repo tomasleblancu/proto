@@ -14,11 +14,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@app/*": ["../app/*"],
-      "@proto/core-web": ["../../../packages/core-web/src"],
-      "@proto/core-web/*": ["../../../packages/core-web/src/*"],
-      "@proto/core-shared": ["../../../packages/core-shared/src"],
-      "@proto/core-shared/*": ["../../../packages/core-shared/src/*"]
+      "@app/*": ["../app/*"]
     }
   },
   "include": ["src"]

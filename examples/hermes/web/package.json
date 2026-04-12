@@ -9,8 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@proto/core-shared": "*",
-    "@proto/core-web": "*",
+    "proto": "^0.1.0",
     "@supabase/supabase-js": "^2.49.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.7.0",

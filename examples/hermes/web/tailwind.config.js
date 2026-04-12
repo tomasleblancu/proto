@@ -4,7 +4,7 @@ export default {
   content: [
     './index.html',
     './src/**/*.{ts,tsx}',
-    '../../../packages/core-web/src/**/*.{ts,tsx}',
+    '../../../packages/proto/core-web/src/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {

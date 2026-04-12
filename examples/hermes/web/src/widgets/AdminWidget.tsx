@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { supabase } from '@proto/core-web'
-import { useData } from '@proto/core-web'
-import { Badge } from '@proto/core-web'
-import { Button } from '@proto/core-web'
-import { Input } from '@proto/core-web'
+import { supabase } from 'proto/web'
+import { useData } from 'proto/web'
+import { Badge } from 'proto/web'
+import { Button } from 'proto/web'
+import { Input } from 'proto/web'
 import { SaveIcon } from 'lucide-react'
 
 interface AgentDef {

@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { supabase } from '@proto/core-web'
-import { useData } from '@proto/core-web'
-import { GATEWAY_URL } from '@proto/core-web'
-import { ShellDialog } from '@proto/core-web'
-import { Button } from '@proto/core-web'
-import { Input } from '@proto/core-web'
-import { Skeleton } from '@proto/core-web'
+import { supabase } from 'proto/web'
+import { useData } from 'proto/web'
+import { GATEWAY_URL } from 'proto/web'
+import { ShellDialog } from 'proto/web'
+import { Button } from 'proto/web'
+import { Input } from 'proto/web'
+import { Skeleton } from 'proto/web'
 import { UserIcon, BuildingIcon, MailIcon, SaveIcon, CheckIcon, LinkIcon, ArrowLeftIcon, PhoneIcon, AtSignIcon } from 'lucide-react'
 
 interface Props {

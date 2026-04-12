@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { GATEWAY_URL } from '@proto/core-web'
-import { useMountEffect } from '@proto/core-web'
+import { GATEWAY_URL } from 'proto/web'
+import { useMountEffect } from 'proto/web'
 
 export default function GmailCallback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')

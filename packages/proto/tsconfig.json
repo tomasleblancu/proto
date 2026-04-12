@@ -10,7 +10,16 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
   },
-  "include": ["src"]
+  "include": [
+    "mcp.ts",
+    "web.ts",
+    "shared.ts",
+    "core-mcp/src",
+    "core-web/src",
+    "core-shared/src"
+  ]
 }

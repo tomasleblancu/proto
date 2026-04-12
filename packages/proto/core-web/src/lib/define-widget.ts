@@ -11,7 +11,7 @@
  *
  * Example augmentation in an app:
  *
- *   declare module '@proto/core-web' {
+ *   declare module 'proto/web' {
  *     interface ShellContext {
  *       cartItems: CartItem[]
  *       addToCart: (item: CartItem) => void

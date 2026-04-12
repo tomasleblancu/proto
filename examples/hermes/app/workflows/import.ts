@@ -16,7 +16,7 @@ import {
   workflowRequiresHumanApproval,
   workflowPhaseIndex,
   workflowIsValidStep,
-} from '@proto/core-shared'
+} from 'proto/shared'
 
 const importWorkflow = defineWorkflow({
   name: 'import',

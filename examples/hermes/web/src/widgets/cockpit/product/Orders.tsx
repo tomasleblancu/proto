@@ -1,8 +1,8 @@
-import { supabase } from '@proto/core-web'
-import { Badge } from '@proto/core-web'
-import { Skeleton } from '@proto/core-web'
-import { cacheGet, cacheSet } from '@proto/core-web'
-import { useData } from '@proto/core-web'
+import { supabase } from 'proto/web'
+import { Badge } from 'proto/web'
+import { Skeleton } from 'proto/web'
+import { cacheGet, cacheSet } from 'proto/web'
+import { useData } from 'proto/web'
 import { BaseProps, STATUS_LABELS } from './shared'
 
 export function ProductOrdersWidget({ productId, refreshKey, onSelectOrder }: BaseProps & { onSelectOrder?: (id: string, label: string) => void }) {

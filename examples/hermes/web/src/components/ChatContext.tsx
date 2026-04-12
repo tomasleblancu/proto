@@ -1,5 +1,5 @@
-import { Badge } from '@proto/core-web'
-import type { DragContext } from '@proto/core-web'
+import { Badge } from 'proto/web'
+import type { DragContext } from 'proto/web'
 import { PackageIcon, BoxIcon, UserIcon } from 'lucide-react'
 
 const ICONS: Record<string, typeof PackageIcon> = {

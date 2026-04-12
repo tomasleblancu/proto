@@ -8,12 +8,12 @@
  * Usage:
  *
  *   // app/mcp.ts (stdio)
- *   import { createProtoMcp } from '@proto/core-mcp'
+ *   import { createProtoMcp } from 'proto/mcp'
  *   const app = await createProtoMcp({ name: 'my-app' })
  *   await app.stdio()
  *
  *   // app/mcp-http.ts (HTTP)
- *   import { createProtoMcp } from '@proto/core-mcp'
+ *   import { createProtoMcp } from 'proto/mcp'
  *   const app = await createProtoMcp({ name: 'my-app' })
  *   await app.http({ port: 8093 })
  */
@@ -26,8 +26,8 @@ import { registerUiTools } from './tools/ui.js'
 import { registerEntityTools } from './entity-tools.js'
 import { registerWorkflowTools } from './workflow-tools.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import type { EntityDefinition } from '@proto/core-shared'
-import type { WorkflowDefinition } from '@proto/core-shared'
+import type { EntityDefinition } from 'proto/shared'
+import type { WorkflowDefinition } from 'proto/shared'
 
 export interface ProtoMcpOptions {
   /** App name (used in MCP server metadata). */

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Avatar, AvatarFallback } from '@proto/core-web'
-import { cn } from '@proto/core-web'
+import { Avatar, AvatarFallback } from 'proto/web'
+import { cn } from 'proto/web'
 
 interface ToolCall {
   tool: string

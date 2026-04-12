@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
+import { defineTool, getSupabase, err, json } from 'proto/mcp'
 import { SAMPLE_STATUSES, isValidSampleTransition, type SampleStatus } from '../shared/index.js'
 
 export default [

@@ -1,4 +1,4 @@
-import type { WidgetInstance } from '@proto/core-web'
+import type { WidgetInstance } from 'proto/web'
 
 /**
  * Default widgets shown on first visit / after reset. Cockpit layouts moved

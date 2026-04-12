@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from 'node:fs'
-import type { ChatRequest } from '@proto/core-shared'
+import type { ChatRequest } from 'proto/shared'
 import { config, resolveAppPath } from './config.js'
 import type { Skill } from './registry.js'
 

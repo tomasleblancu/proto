@@ -3,7 +3,7 @@ import { getSupabase } from './supabase.js'
 import { runClaude } from './claude-runner.js'
 import { sendSystemMail } from './email-sender.js'
 import { config } from './config.js'
-import type { TaskNotifyTrigger, TaskOutputChannel } from '@proto/core-shared'
+import type { TaskNotifyTrigger, TaskOutputChannel } from 'proto/shared'
 
 /**
  * Scheduler core: next-run calculation, due-task scan, dispatch.

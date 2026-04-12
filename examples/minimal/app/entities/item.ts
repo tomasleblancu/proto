@@ -1,4 +1,4 @@
-import { defineEntity } from '@proto/core-shared'
+import { defineEntity } from 'proto/shared'
 
 export default defineEntity({
   name: 'item',

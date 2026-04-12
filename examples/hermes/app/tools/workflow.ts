@@ -11,7 +11,7 @@
  * state-machine shape — currently just `detect_tlc_requirement`.
  */
 import { z } from 'zod'
-import { defineTool, agent } from '@proto/core-mcp'
+import { defineTool, agent } from 'proto/mcp'
 import { detectTlcRequirement } from '../shared/index.js'
 
 export default [

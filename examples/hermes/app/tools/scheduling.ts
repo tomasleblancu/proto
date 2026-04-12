@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
-import { isValidCronExpr, TASK_OUTPUT_CHANNELS, TASK_NOTIFY_TRIGGERS } from '@proto/core-shared'
+import { defineTool, getSupabase, err, json } from 'proto/mcp'
+import { isValidCronExpr, TASK_OUTPUT_CHANNELS, TASK_NOTIFY_TRIGGERS } from 'proto/shared'
 
 /**
  * Agent-facing CRUD + control for scheduled tasks.

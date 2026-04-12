@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool, getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase } from 'proto/mcp'
 
 export default [
   defineTool({

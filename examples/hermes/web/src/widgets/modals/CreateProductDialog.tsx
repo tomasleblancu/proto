@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { supabase } from '@proto/core-web'
-import { ShellDialog } from '@proto/core-web'
+import { supabase } from 'proto/web'
+import { ShellDialog } from 'proto/web'
 import { Loader2Icon, ImagePlusIcon, XIcon } from 'lucide-react'
 
 interface Props {

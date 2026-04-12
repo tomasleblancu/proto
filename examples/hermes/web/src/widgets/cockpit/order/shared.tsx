@@ -1,4 +1,4 @@
-import { supabase } from '@proto/core-web'
+import { supabase } from 'proto/web'
 
 /**
  * Shared primitives for order cockpit widgets.

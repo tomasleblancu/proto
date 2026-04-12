@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool, getSupabase, agent, agentErr } from '@proto/core-mcp'
+import { defineTool, getSupabase, agent, agentErr } from 'proto/mcp'
 import { COSTING_FIELDS, type CostingBreakdown, computeEstimated, computeActualFromPayments, mergeActual, type CostingDefault, type PaymentRow, detectTlcRequirement } from '../shared/index.js'
 
 const breakdownSchema = z.object(

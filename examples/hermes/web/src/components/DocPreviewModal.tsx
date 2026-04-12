@@ -1,9 +1,9 @@
 import { useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { supabase } from '@proto/core-web'
+import { supabase } from 'proto/web'
 import { XIcon, DownloadIcon, Loader2Icon, FileIcon } from 'lucide-react'
-import { useData } from '@proto/core-web'
-import { useMountEffect } from '@proto/core-web'
+import { useData } from 'proto/web'
+import { useMountEffect } from 'proto/web'
 
 interface Props {
   doc: {

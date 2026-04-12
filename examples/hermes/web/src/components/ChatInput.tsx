@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { Button } from '@proto/core-web'
-import { Textarea } from '@proto/core-web'
+import { Button } from 'proto/web'
+import { Textarea } from 'proto/web'
 import { PaperclipIcon, SendIcon, XIcon, FileTextIcon } from 'lucide-react'
 
 export interface Attachment {

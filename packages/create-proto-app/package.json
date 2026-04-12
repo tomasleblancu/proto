@@ -6,7 +6,9 @@
     "create-proto-app": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc"
+    "bundle": "node scripts/bundle.js",
+    "build": "tsc",
+    "prepublishOnly": "npm run bundle && npm run build"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

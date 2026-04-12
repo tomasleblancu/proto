@@ -9,7 +9,7 @@ import {
   hermesSocket,
   buildWidgetRegistry,
   type CockpitDefinition,
-} from '@proto/core-web'
+} from 'proto/web'
 import { Eraser, ShoppingCartIcon } from 'lucide-react'
 import type { CartItem } from './shared/types'
 import { WIDGETS } from './widgets/registry'

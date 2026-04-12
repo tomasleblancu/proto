@@ -4,7 +4,7 @@
  * web side (user clicks a product row) but the agent can activate it too to
  * scope conversations.
  */
-import { defineEntity } from '@proto/core-shared'
+import { defineEntity } from 'proto/shared'
 
 export default defineEntity({
   name: 'product',

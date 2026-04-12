@@ -14,40 +14,54 @@ TypeScript monorepo framework for building AI-agent-driven apps. The developer d
 
 ```
 proto/
-├── packages/                       Framework (library, don't touch)
-│   ├── core-gateway/               Hono HTTP+WS, Claude CLI runner, scheduler, mail
-│   ├── core-mcp/                   MCP server, defineTool, createProtoMcp, auto-discovery
-│   ├── core-shared/                Types, defineEntity, defineWorkflow
-│   ├── core-web/                   React Shell, ProtoApp, defineWidget, hooks, shadcn UI
-│   └── create-proto-app/           CLI scaffolder
+├── packages/
+│   ├── proto/                          Framework (single publishable package)
+│   │   ├── mcp.ts                      Barrel: export * from './core-mcp/src'
+│   │   ├── web.ts                      Barrel: export * from './core-web/src'
+│   │   ├── shared.ts                   Barrel: export * from './core-shared/src'
+│   │   ├── core-mcp/                   MCP server, defineTool, createProtoMcp
+│   │   ├── core-web/                   React Shell, ProtoApp, defineWidget, hooks, shadcn
+│   │   └── core-shared/                Types, defineEntity, defineWorkflow
+│   ├── core-gateway/                   Hono HTTP+WS, Claude CLI runner, scheduler, mail
+│   └── create-proto-app/               CLI scaffolder
 ├── examples/
-│   ├── hermes/                     Production app (89 tools, 20 widgets, 2 entities)
+│   ├── hermes/                         Production app (89 tools, 20 widgets, 2 entities)
 │   │   ├── app/
-│   │   │   ├── tools/*.ts          Auto-discovered by createProtoMcp
-│   │   │   ├── entities/*.ts       Auto-discovered
-│   │   │   ├── workflows/*.ts      Auto-discovered
-│   │   │   ├── skills/*/SKILL.md   Auto-discovered by gateway
-│   │   │   ├── prompts/*.md        Via project.yaml
-│   │   │   ├── mcp.ts             2 lines: createProtoMcp + stdio
-│   │   │   └── mcp-http.ts        2 lines: createProtoMcp + http
-│   │   ├── web/                    Hermes frontend (custom App.tsx, Chat, modals)
-│   │   └── supabase/migrations/   30 SQL files
-│   └── minimal/                    Template for new apps
+│   │   │   ├── tools/*.ts              Auto-discovered by createProtoMcp
+│   │   │   ├── entities/*.ts           Auto-discovered
+│   │   │   ├── workflows/*.ts          Auto-discovered
+│   │   │   ├── skills/*/SKILL.md       Auto-discovered by gateway
+│   │   │   ├── prompts/*.md            Via project.yaml
+│   │   │   ├── mcp.ts                  2 lines: createProtoMcp + stdio
+│   │   │   └── mcp-http.ts            2 lines: createProtoMcp + http
+│   │   ├── web/                        Hermes frontend (custom App.tsx, Chat, modals)
+│   │   └── supabase/migrations/        30 SQL files
+│   └── minimal/                        Template for new apps
 │       ├── app/
-│       │   ├── tools/items.ts      3 example tools
-│       │   ├── entities/item.ts    1 example entity
-│       │   ├── workflows/task.ts   1 example workflow (3 phases)
-│       │   ├── skills/items/       1 example domain skill
-│       │   └── prompts/default.md  System prompt
+│       │   ├── tools/items.ts          3 example tools
+│       │   ├── entities/item.ts        1 example entity
+│       │   ├── workflows/task.ts       1 example workflow (3 phases)
+│       │   ├── skills/items/           1 example domain skill
+│       │   └── prompts/default.md      System prompt
 │       ├── web/src/
-│       │   ├── App.tsx             8 lines: glob widgets + ProtoApp
-│       │   └── widgets/*.tsx       Self-registering via defineWidget
-│       ├── supabase/migrations/    1 SQL file
+│       │   ├── App.tsx                 8 lines: glob widgets + ProtoApp
+│       │   └── widgets/*.tsx           Self-registering via defineWidget
+│       ├── supabase/migrations/        1 SQL file
 │       └── .env.example
-├── .claude/skills/                 8 framework skills for Claude Code
-├── Dockerfile                      Generic, APP_NAME build arg
-├── docker-compose.yml              Generic, APP_NAME env var
-└── entrypoint.sh                   CLAUDE_SETUP_TOKEN auth
+├── .claude/skills/                     8 framework skills for Claude Code
+├── Dockerfile                          Generic, APP_NAME build arg
+├── docker-compose.yml                  Generic, APP_NAME env var
+└── entrypoint.sh                       CLAUDE_SETUP_TOKEN auth
+```
+
+## Imports
+
+One package, three subpath exports:
+
+```ts
+import { defineTool, getSupabase, err, json } from 'proto/mcp'
+import { defineWidget, useData, supabase, ProtoApp } from 'proto/web'
+import { defineEntity, defineWorkflow } from 'proto/shared'
 ```
 
 ## What the app developer writes
@@ -70,7 +84,7 @@ create table items (
 ### 2. Tools (what the agent can do)
 ```ts
 // app/tools/items.ts
-import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
+import { defineTool, getSupabase, err, json } from 'proto/mcp'
 import { z } from 'zod'
 
 export default [
@@ -91,8 +105,8 @@ Tools are auto-discovered from `app/tools/*.ts`. Each file exports `default [def
 ### 3. Widgets (what the user sees)
 ```tsx
 // web/src/widgets/ItemsWidget.tsx
-import { defineWidget, useData, supabase } from '@proto/core-web'
-import type { ShellContext } from '@proto/core-web'
+import { defineWidget, useData, supabase } from 'proto/web'
+import type { ShellContext } from 'proto/web'
 
 export default defineWidget({
   type: 'items',
@@ -125,9 +139,11 @@ Widgets are auto-discovered from `web/src/widgets/*.tsx` via `import.meta.glob`.
 
 ```ts
 // app/entities/item.ts — activatable entity with cockpit mode
+import { defineEntity } from 'proto/shared'
 export default defineEntity({ name: 'item', table: 'items', labelField: 'name', cockpit: { widgets, layouts } })
 
 // app/workflows/task.ts — state machine with auto-generated tools
+import { defineWorkflow } from 'proto/shared'
 export default defineWorkflow({ name: 'task', entityTable: 'tasks', phases: [...] })
 ```
 
@@ -147,17 +163,17 @@ All auto-discovered. Drop files, they load.
 
 ```ts
 // app/mcp.ts — 2 lines
-import { createProtoMcp } from '@proto/core-mcp'
+import { createProtoMcp } from 'proto/mcp'
 const app = await createProtoMcp({ name: 'my-app' })
 await app.stdio()
 
 // app/mcp-http.ts — 2 lines
-import { createProtoMcp } from '@proto/core-mcp'
+import { createProtoMcp } from 'proto/mcp'
 const app = await createProtoMcp({ name: 'my-app' })
 await app.http()
 
 // web/src/App.tsx — auto-discovers widgets + entities
-import { ProtoApp } from '@proto/core-web'
+import { ProtoApp } from 'proto/web'
 const mods = import.meta.glob('./widgets/*.tsx', { eager: true })
 const WIDGETS = Object.values(mods).map(m => m.default).filter(Boolean)
 export default function App() { return <ProtoApp widgets={WIDGETS} /> }
@@ -179,13 +195,13 @@ User chats → gateway passes to Claude CLI → Claude calls MCP tools → tools
 
 ## Key APIs
 
-### core-mcp
+### proto/mcp
 - `createProtoMcp({ name })` — auto-discovers tools/, entities/, workflows/, builds MCP server
 - `defineTool({ name, schema, handler })` — declarative tool
 - `getSupabase()` — service-role Supabase client
 - `ok(text)`, `json(obj)`, `err(msg)` — tool response helpers
 
-### core-web
+### proto/web
 - `ProtoApp` — zero-config React app (Shell + auth + entity management)
 - `defineWidget({ type, title, category, render })` — declarative widget
 - `Shell` — lower-level component if ProtoApp is too opinionated
@@ -193,7 +209,7 @@ User chats → gateway passes to Claude CLI → Claude calls MCP tools → tools
 - `useAuth()` — Supabase auth hook
 - `supabase` — anon-key Supabase client (browser-side)
 
-### core-shared
+### proto/shared
 - `defineEntity({ name, table, cockpit })` — activatable entity
 - `defineWorkflow({ name, entityTable, phases })` — state machine
 
@@ -220,7 +236,7 @@ npm run dev:minimal-web  # minimal frontend on :3002
 ```bash
 cd examples/hermes && npx tsx --eval "
 async function main() {
-  const { createProtoMcp } = await import('@proto/core-mcp')
+  const { createProtoMcp } = await import('proto/mcp')
   const app = await createProtoMcp({ name: 'hermes' })
   console.log('tools:', app.toolCount)
 }
@@ -257,7 +273,7 @@ Docker Compose uses `APP_NAME` env var to select which app to deploy. The Docker
 Only inside reusable hooks (`useData`, `useMountEffect`). See checklist in code.
 
 ### Domain-agnostic core
-Core packages must not import from apps. `grep -r 'orders\|products\|supplier' packages/core-*/src/` should return only generic mentions.
+Core packages must not import from apps. `grep -r 'orders\|products\|supplier' packages/proto/core-*/src/` should return only generic mentions.
 
 ### Tool context via ctx, not args
 New tools should read `company_id` from session context, not as an agent parameter (legacy: 89 hermes tools still use args).
@@ -273,7 +289,7 @@ No file over ~400 lines. Pending splits: `Admin.tsx` (1286L), `Chat.tsx` (553L).
 
 ### Env vars
 - Gateway: all via `packages/core-gateway/src/config.ts`
-- Web: all via `packages/core-web/src/lib/config.ts` (`VITE_*`)
+- Web: all via `packages/proto/core-web/src/lib/config.ts` (`VITE_*`)
 - MCP: reads `process.env` directly
 
 ## Supabase conventions

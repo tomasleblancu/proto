@@ -30,7 +30,7 @@ examples/hermes/app/workflows/
 
 ```ts
 // examples/hermes/app/workflows/approval.ts
-import { defineWorkflow } from '@proto/core-shared'
+import { defineWorkflow } from 'proto/shared'
 
 export default defineWorkflow({
   name: 'approval',
@@ -148,16 +148,7 @@ Si la tabla del nuevo workflow tiene nombres distintos, overrideá via el field 
 
 ## Después de agregar el workflow
 
-1. **Registrarlo en `tools/index.ts`**:
-   ```ts
-   import { registerWorkflowTools } from '@proto/core-mcp'
-   import approvalWorkflow from '../workflows/approval.js'
-
-   export function registerAppTools(server: McpServer): void {
-     // ... otros register calls ...
-     registerWorkflowTools(server, approvalWorkflow)
-   }
-   ```
+1. **No hay que registrar manualmente** — `createProtoMcp()` auto-descubre todos los archivos en `app/workflows/`. Solo creá el archivo y listo.
 
 2. **Crear las migraciones**:
    - Tabla `entityTable` con columnas `id`, `company_id`, `current_phase`, `current_step`, `on_hold`, `blocked_reason`, `cancelled`, `updated_at` (o los nombres custom).
@@ -167,21 +158,18 @@ Si la tabla del nuevo workflow tiene nombres distintos, overrideá via el field 
 3. **Derivar helpers legacy** si otros tools necesitan `PHASES`, `PHASE_LABELS`, etc del nuevo workflow:
    ```ts
    // al final de workflows/approval.ts
-   import { workflowPhaseNames, workflowPhaseLabels, workflowAllPhaseSteps } from '@proto/core-shared'
+   import { workflowPhaseNames, workflowPhaseLabels, workflowAllPhaseSteps } from 'proto/shared'
    export const APPROVAL_PHASES = workflowPhaseNames(approvalWorkflow)
    export const APPROVAL_PHASE_LABELS = workflowPhaseLabels(approvalWorkflow)
    export const APPROVAL_PHASE_STEPS = workflowAllPhaseSteps(approvalWorkflow)
    ```
 
-4. **Smoke test** — verificá los 9 tools generados:
+4. **Smoke test** — verificá que los tools se generaron:
    ```bash
-   npx tsx -e "
-   import { createMcpServer } from '@proto/core-mcp'
-   import { registerAppTools } from './examples/hermes/app/tools/index.ts'
-   const s = createMcpServer({ name: 'hermes', version: '0.1.0' })
-   registerAppTools(s)
-   const names = Object.keys((s as any)._registeredTools).sort()
-   console.log('workflow tools:', names.filter(n => /^(get_item_state|list_items_by_phase|advance_step|block_item|unblock_item|hold_item|resume_item|cancel_item|request_human_approval)$/.test(n)))
+   cd examples/<app> && npx tsx -e "
+   const { createProtoMcp } = await import('proto/mcp')
+   const app = await createProtoMcp({ name: '<app>' })
+   console.log('tools:', app.toolCount)
    "
    ```
 

@@ -8,8 +8,7 @@
     "mcp:http": "tsx app/mcp-http.ts"
   },
   "dependencies": {
-    "@proto/core-mcp": "*",
-    "@proto/core-shared": "*",
+    "proto": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.27.0",
     "@supabase/supabase-js": "^2.49.0",
     "zod": "^3.24.0"

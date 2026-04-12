@@ -89,7 +89,7 @@ ENV PROTO_APP_ROOT=/app/examples/<app>
 4. **Smoke test:**
    ```bash
    npx tsx -e "
-   import { createMcpServer } from '@proto/core-mcp'
+   import { createMcpServer } from 'proto/mcp'
    import { registerAppTools } from './examples/<app>/app/tools/index.ts'
    const s = createMcpServer({ name: 'test', version: '0.1.0' })
    registerAppTools(s)
@@ -202,14 +202,14 @@ El web frontend lo envía automáticamente via config (`VITE_INTERNAL_SECRET`).
 npm run build
 
 # Solo una workspace
-npm run build -w packages/core-mcp
+npm run build -w packages/proto
 npm run build -w @proto-app/<app>-web
 
 # Type check sin compilar
 npx tsc --noEmit -p examples/<app>/web/tsconfig.json
 ```
 
-Orden de build importa: `core-shared → core-mcp → core-gateway → core-web → app-web`. Si algo falla, verificar que las dependencias upstream compilaron.
+Orden de build importa: `packages/proto → packages/core-gateway → app-web`. Si algo falla, verificar que las dependencias upstream compilaron.
 
 ## Logs útiles
 

@@ -8,7 +8,7 @@
  *
  * Apps call this from their tools/index.ts:
  *
- *   import { registerEntityTools } from '@proto/core-mcp'
+ *   import { registerEntityTools } from 'proto/mcp'
  *   import { ENTITIES } from '../entities/index.js'
  *
  *   export function registerAppTools(server) {
@@ -18,7 +18,7 @@
  *   }
  */
 import { z } from 'zod'
-import type { EntityDefinition } from '@proto/core-shared'
+import type { EntityDefinition } from 'proto/shared'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { defineTool, registerTools } from './define-tool.js'
 import { getSupabase } from './supabase.js'

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool, getSupabase } from '@proto/core-mcp'
+import { defineTool, getSupabase } from 'proto/mcp'
 import { isValidTransition, type OrderStatus } from '../shared/index.js'
 import { adjustInventoryForStatusChange } from './inventory.js'
 

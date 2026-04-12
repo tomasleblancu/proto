@@ -24,14 +24,15 @@ Los tools se agrupan por dominio en archivos, con un archivo por dominio (no un 
 examples/hermes/app/tools/
 ├── orders.ts         ← tools de pedidos (create_order, list_orders, update_order, delete_order, ...)
 ├── products.ts       ← tools de productos
-├── workflow.ts       ← tool adjacente al workflow (detect_tlc_requirement) — las tools del state machine se generan via defineWorkflow
-├── ... (18 archivos)
-└── index.ts          ← aggregator que arma ALL_APP_TOOLS + registerAppTools()
+├── workflow.ts       ← tool adjacente al workflow (detect_tlc_requirement)
+└── ... (18 archivos)
 ```
+
+**Auto-discovery**: `createProtoMcp()` descubre automáticamente todos los archivos `.ts` en `app/tools/`. No hay que registrar nada manualmente — solo crear el archivo y exportar el array.
 
 **Tools auto-generadas**: no las escribas a mano. Los tools `activate_<entity>` / `deactivate_<entity>` / `get_active_<entity>` vienen de `defineEntity` (ver `proto-entity` skill). Los tools del state machine (`get_item_state`, `advance_step`, `block_item`, etc.) vienen de `defineWorkflow` (ver `proto-workflow` skill).
 
-**Regla**: si estás agregando un tool a un dominio existente, andá al archivo correspondiente y agregá una entrada al array. Si el dominio es nuevo, creá un archivo nuevo y sumá su import al `index.ts`.
+**Regla**: si estás agregando un tool a un dominio existente, andá al archivo correspondiente y agregá una entrada al array. Si el dominio es nuevo, creá un archivo nuevo — se descubre solo.
 
 ## Shape de un tool file
 
@@ -40,7 +41,7 @@ Cada archivo exporta por default un array de `defineTool` calls:
 ```ts
 // examples/hermes/app/tools/items.ts
 import { z } from 'zod'
-import { defineTool, getSupabase, err, json } from '@proto/core-mcp'
+import { defineTool, getSupabase, err, json } from 'proto/mcp'
 import { PHASES, type Phase, isValidStep } from '../shared/index.js'
 
 export default [
@@ -89,7 +90,7 @@ export default [
 
 ## Return value
 
-El handler retorna un `ToolResult` con shape MCP (`{ content: [{ type: 'text', text: string }] }`). Usá los helpers de `@proto/core-mcp`:
+El handler retorna un `ToolResult` con shape MCP (`{ content: [{ type: 'text', text: string }] }`). Usá los helpers de `proto/mcp`:
 
 - **`ok(text)`** — plain text response
 - **`json(obj)`** — serialize an object as JSON
@@ -109,26 +110,14 @@ return agent({
 
 ## Después de agregar el tool
 
-1. **Actualizar `tools/index.ts`** — SOLO si creaste un archivo nuevo. Si editaste uno existente, no toques el index.
-   ```ts
-   import newDomainTools from './new-domain.js'
-   // ... resto de imports ...
-   const ALL_APP_TOOLS = [
-     ...newDomainTools,
-     // ... resto
-   ]
-   ```
+1. **No hay que registrar manualmente** — `createProtoMcp()` auto-descubre todos los archivos en `app/tools/`. Solo creá el archivo y listo.
 
 2. **Smoke test** — verificá que registra sin errores:
    ```bash
-   npx tsx -e "
-   import { createMcpServer } from '@proto/core-mcp'
-   import { registerAppTools } from './examples/hermes/app/tools/index.ts'
-   const s = createMcpServer({ name: 'hermes', version: '0.1.0' })
-   registerAppTools(s)
-   const names = Object.keys((s as any)._registeredTools).sort()
-   console.log('total:', names.length)
-   console.log('mine:', names.filter(n => n.includes('your_new_tool_prefix')))
+   cd examples/<app> && npx tsx -e "
+   const { createProtoMcp } = await import('proto/mcp')
+   const app = await createProtoMcp({ name: '<app>' })
+   console.log('tools:', app.toolCount)
    "
    ```
 
@@ -158,7 +147,7 @@ return agent({
 - ❌ **Handler lee de process.env** — fragil, difícil de test. Usá args o (futuro) ctx.
 - ❌ **Hardcodear `company_id` o `user_id`** en el handler.
 - ❌ **Lógica de negocio en `_helpers.ts`** — los helpers son solo formatters (ok/json/err/agent). Side effects van en el handler.
-- ❌ **Tools nuevos en core-mcp** — core-mcp es framework. App tools viven en `examples/<app>/app/tools/`.
+- ❌ **Tools nuevos en packages/proto/** — el paquete proto es framework. App tools viven en `<app>/app/tools/`.
 
 ## Checklist antes de cerrar
 
@@ -168,6 +157,6 @@ return agent({
 - [ ] Todos los campos del schema tienen `.describe()`
 - [ ] `company_id` filtrado en queries multi-tenant
 - [ ] Error path retorna `err()` / `agentErr()`, no `ok()`
-- [ ] Si creaste archivo nuevo: `tools/index.ts` lo importa y agrega al `ALL_APP_TOOLS`
+- [ ] Si creaste archivo nuevo: se auto-descubre (no hay que registrar)
 - [ ] Smoke test corre y el nuevo tool aparece en la lista
 - [ ] Skill de dominio actualizado si el flujo del agente cambia

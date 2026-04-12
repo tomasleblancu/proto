@@ -1,9 +1,9 @@
-import { supabase } from '@proto/core-web'
-import { useData } from '@proto/core-web'
-import { Badge } from '@proto/core-web'
-import { Button } from '@proto/core-web'
-import { Separator } from '@proto/core-web'
-import { Skeleton } from '@proto/core-web'
+import { supabase } from 'proto/web'
+import { useData } from 'proto/web'
+import { Badge } from 'proto/web'
+import { Button } from 'proto/web'
+import { Separator } from 'proto/web'
+import { Skeleton } from 'proto/web'
 
 const STATUS_LABELS: Record<string, string> = {
   sourcing: 'Buscando', draft: 'Borrador', po_sent: 'OC Enviada',

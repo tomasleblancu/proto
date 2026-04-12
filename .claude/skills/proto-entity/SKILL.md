@@ -31,7 +31,7 @@ examples/hermes/app/entities/
 
 ```ts
 // examples/hermes/app/entities/invoice.ts
-import { defineEntity } from '@proto/core-shared'
+import { defineEntity } from 'proto/shared'
 
 export default defineEntity({
   name: 'invoice',              // usado como activeEntity.type + sufijo de tool
@@ -92,18 +92,14 @@ export default defineEntity({
 
 3. **Smoke test** — verificá que los 3 tools auto-generados aparecen:
    ```bash
-   npx tsx -e "
-   import { createMcpServer } from '@proto/core-mcp'
-   import { registerAppTools } from './examples/hermes/app/tools/index.ts'
-   const s = createMcpServer({ name: 'hermes', version: '0.1.0' })
-   registerAppTools(s)
-   const names = Object.keys((s as any)._registeredTools).sort()
-   console.log('entity tools:', names.filter(n => /^(activate|deactivate|get_active)_invoice$/.test(n)))
+   cd examples/<app> && npx tsx -e "
+   const { createProtoMcp } = await import('proto/mcp')
+   const app = await createProtoMcp({ name: '<app>' })
+   console.log('tools:', app.toolCount)
    "
-   # expected: [ 'activate_invoice', 'deactivate_invoice', 'get_active_invoice' ]
    ```
 
-4. **Frontend interception**: `Chat.tsx` ya intercepta cualquier `activate_<name>`/`deactivate_<name>` genéricamente (via `parseEntityToolName`). No necesitás tocar el frontend salvo para agregar `type: 'invoice'` al narrowing de `onAgentActivateEntity` si quedó hardcoded en el `App.tsx`.
+4. **Frontend**: entities se auto-descubren via `import.meta.glob('../../app/entities/*.ts')` en `App.tsx`. No hay que tocar el frontend — las entities nuevas se cargan solas.
 
 5. **Migración Supabase**: si la tabla no existe, creá la migración primero. Las RLS policies deben permitir acceso via service role (core-mcp) y via auth'd user (frontend snapshot builder).
 
@@ -129,7 +125,7 @@ export default defineEntity({
 ## Anti-patterns
 
 - ❌ **React components en el entity file** — no imports de `.tsx`, no JSX. El file debe cargar desde Node (MCP) y Vite (web).
-- ❌ **Importar `@proto/core-mcp`** en el entity — sólo `@proto/core-shared` para `defineEntity`.
+- ❌ **Importar `proto/mcp`** en el entity — sólo `proto/shared` para `defineEntity`.
 - ❌ **Hardcodear company_id** en el snapshot builder — usá el supabase cliente que llega por ctx (ya está auth'd con el RLS correcto en el browser).
 - ❌ **Side effects en `defineEntity({...})`** — es pura data. No lances queries, no leas env vars.
 - ❌ **Entities sin `labelField`** — la UI necesita algo para mostrar en la tab. Aunque sea `id`.
