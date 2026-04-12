@@ -82,20 +82,32 @@ async function loadToolsFromDir(dir: string): Promise<ToolDefinition[]> {
   return allTools
 }
 
-async function loadEntities(basePath: string): Promise<EntityDefinition[]> {
+async function loadEntities(dirOrBarrel: string): Promise<EntityDefinition[]> {
+  // Try barrel file first (index.ts/index.js)
   for (const ext of ['.ts', '.js']) {
-    const p = basePath + ext
+    const p = dirOrBarrel + ext
     if (existsSync(p)) {
       const mod = await import(pathToFileURL(p).href)
       return mod.ENTITIES || mod.default || []
     }
   }
-  // Try without extension (might already have it)
-  if (existsSync(basePath)) {
-    const mod = await import(pathToFileURL(basePath).href)
-    return mod.ENTITIES || mod.default || []
+
+  // Auto-discover individual entity files from the directory
+  const dir = dirname(dirOrBarrel)
+  if (!existsSync(dir)) return []
+
+  const files = readdirSync(dir).filter(
+    f => (f.endsWith('.ts') || f.endsWith('.js')) && f !== 'index.ts' && f !== 'index.js'
+  )
+
+  const entities: EntityDefinition[] = []
+  for (const file of files) {
+    const mod = await import(pathToFileURL(join(dir, file)).href)
+    if (mod.default && typeof mod.default === 'object' && 'name' in mod.default) {
+      entities.push(mod.default)
+    }
   }
-  return []
+  return entities
 }
 
 async function loadWorkflow(basePath: string): Promise<WorkflowDefinition | null> {
