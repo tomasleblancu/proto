@@ -23,8 +23,9 @@ proto/
 │   │   ├── web.ts                      Barrel: export * from './core-web/src'
 │   │   ├── shared.ts                   Barrel: export * from './core-shared/src'
 │   │   ├── core-mcp/                   MCP server, defineTool, createProtoMcp
-│   │   ├── core-web/                   React Shell, ProtoApp, defineWidget, hooks, shadcn
-│   │   └── core-shared/                Types, defineEntity, defineWorkflow
+│   │   ├── core-web/                   React Shell, ProtoApp, AdminPanel, defineWidget, hooks, shadcn
+│   │   ├── core-shared/                Types, defineEntity, defineWorkflow
+│   │   └── core-gateway/               Hono HTTP+WS gateway, createProtoGateway
 │   ├── core-gateway/                   Hono HTTP+WS, Claude CLI runner, scheduler, mail
 │   └── create-proto-app/               CLI scaffolder
 ├── examples/
@@ -59,12 +60,13 @@ proto/
 
 ## Package
 
-Published on npm as [`@tleblancureta/proto`](https://www.npmjs.com/package/@tleblancureta/proto). One package, three subpath exports:
+Published on npm as [`@tleblancureta/proto`](https://www.npmjs.com/package/@tleblancureta/proto). One package, four subpath exports:
 
 ```ts
 import { defineTool, getSupabase, err, json } from '@tleblancureta/proto/mcp'
 import { defineWidget, useData, supabase, ProtoApp } from '@tleblancureta/proto/web'
 import { defineEntity, defineWorkflow } from '@tleblancureta/proto/shared'
+import { createProtoGateway } from '@tleblancureta/proto/gateway'
 ```
 
 ## What the app developer writes
@@ -175,6 +177,10 @@ import { createProtoMcp } from '@tleblancureta/proto/mcp'
 const app = await createProtoMcp({ name: 'my-app' })
 await app.http()
 
+// app/gateway.ts — 2 lines
+import { createProtoGateway } from '@tleblancureta/proto/gateway'
+await createProtoGateway()
+
 // web/src/App.tsx — auto-discovers widgets + entities
 import { ProtoApp } from '@tleblancureta/proto/web'
 const mods = import.meta.glob('./widgets/*.tsx', { eager: true })
@@ -205,7 +211,8 @@ User chats → gateway passes to Claude CLI → Claude calls MCP tools → tools
 - `ok(text)`, `json(obj)`, `err(msg)` — tool response helpers
 
 ### @tleblancureta/proto/web
-- `ProtoApp` — zero-config React app (Shell + auth + entity management)
+- `ProtoApp` — zero-config React app (Shell + auth + admin + entity management)
+- `AdminPanel` — built-in /admin panel (users, companies, widgets, system)
 - `defineWidget({ type, title, category, render })` — declarative widget
 - `Shell` — lower-level component if ProtoApp is too opinionated
 - `useData(fetcher, deps, initial)` — data-fetching hook (replaces useEffect)
@@ -216,9 +223,9 @@ User chats → gateway passes to Claude CLI → Claude calls MCP tools → tools
 - `defineEntity({ name, table, cockpit })` — activatable entity
 - `defineWorkflow({ name, entityTable, phases })` — state machine
 
-### core-gateway
+### @tleblancureta/proto/gateway
+- `createProtoGateway({ port? })` — starts Hono HTTP+WS gateway
 - Hono HTTP server with WebSocket chat
-- Claude CLI runner with `--resume` session management
 - Skill loader with YAML frontmatter + transitive deps
 - Mail channel (SMTP + IMAP)
 - Scheduler (croner + Supabase `scheduled_tasks`)

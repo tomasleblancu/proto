@@ -1,39 +1,7 @@
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
-import { createNodeWebSocket } from '@hono/node-ws'
-import { serve } from '@hono/node-server'
-import { verifySecret } from './auth.js'
-import { config, PORT } from './config.js'
-import { registerChatRoutes } from './routes/chat.js'
-import { registerUploadRoutes } from './routes/upload.js'
-import { registerGmailRoutes } from './routes/gmail.js'
-import { registerHealthRoutes } from './routes/health.js'
-import { registerCronRoutes } from './routes/cron.js'
-import { registerAdminRoutes } from './routes/admin.js'
-import { startMailIngester } from './mail-ingester.js'
+/**
+ * Monorepo gateway entrypoint — delegates to the proto package.
+ * Kept for backward compat with `npm run dev:gateway` in the monorepo.
+ */
+import { createProtoGateway } from '@tleblancureta/proto/gateway'
 
-const app = new Hono()
-const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app })
-
-app.use('*', cors())
-
-// Auth middleware for REST endpoints (WS uses its own auth handshake)
-app.use('/chat', verifySecret)
-app.use('/chat/*', verifySecret)
-app.use('/upload/*', verifySecret)
-
-// Mount routes
-registerChatRoutes(app, upgradeWebSocket as any)
-registerUploadRoutes(app)
-registerGmailRoutes(app)
-registerHealthRoutes(app)
-registerCronRoutes(app)
-registerAdminRoutes(app)
-
-// --- Start ---
-console.log(`${config.display_name} Gateway starting on port ${PORT}`)
-const server = serve({ fetch: app.fetch, port: PORT })
-injectWebSocket(server)
-
-// Start the IMAP ingester (no-op if MAIL_IMAP_HOST not configured)
-startMailIngester()
+await createProtoGateway()

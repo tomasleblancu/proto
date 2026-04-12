@@ -17,8 +17,10 @@
     "mcp.ts",
     "web.ts",
     "shared.ts",
+    "gateway.ts",
     "core-mcp/src",
     "core-web/src",
-    "core-shared/src"
+    "core-shared/src",
+    "core-gateway"
   ]
 }

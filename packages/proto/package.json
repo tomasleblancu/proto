@@ -1,6 +1,6 @@
 {
   "name": "@tleblancureta/proto",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "TypeScript framework for building AI-agent-driven apps. Define tools, widgets, and data models — get chat, Shell dashboard, auth, MCP server, and Claude CLI integration.",
   "license": "MIT",
@@ -21,6 +21,10 @@
     "./shared": {
       "types": "./dist/shared.d.ts",
       "default": "./dist/shared.js"
+    },
+    "./gateway": {
+      "types": "./dist/gateway.d.ts",
+      "default": "./dist/gateway.js"
     }
   },
   "files": [
@@ -39,25 +43,41 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "@hono/node-ws": "^1.3.0",
     "clsx": "^2.1.1",
+    "croner": "^9.1.0",
+    "hono": "^4.7.0",
     "lucide-react": "^1.7.0",
     "react-grid-layout": "^2.2.3",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.14.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.5.0",
+    "ws": "^8.20.0",
+    "yaml": "^2.7.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@modelcontextprotocol/sdk": "^1.27.0",
     "@supabase/supabase-js": "^2.49.0",
+    "@types/mailparser": "^3.4.6",
+    "@types/node": "^22.0.0",
+    "@types/nodemailer": "^8.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/react-grid-layout": "^1.3.6",
+    "@types/ws": "^8.18.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
+  },
+  "optionalDependencies": {
+    "googleapis": "^171.4.0",
+    "imapflow": "^1.3.1",
+    "mailparser": "^3.9.8",
+    "nodemailer": "^8.0.5"
   }
 }
