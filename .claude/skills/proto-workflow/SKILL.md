@@ -30,7 +30,7 @@ examples/hermes/app/workflows/
 
 ```ts
 // examples/hermes/app/workflows/approval.ts
-import { defineWorkflow } from 'proto/shared'
+import { defineWorkflow } from '@tleblancureta/proto/shared'
 
 export default defineWorkflow({
   name: 'approval',
@@ -158,7 +158,7 @@ Si la tabla del nuevo workflow tiene nombres distintos, overrideá via el field 
 3. **Derivar helpers legacy** si otros tools necesitan `PHASES`, `PHASE_LABELS`, etc del nuevo workflow:
    ```ts
    // al final de workflows/approval.ts
-   import { workflowPhaseNames, workflowPhaseLabels, workflowAllPhaseSteps } from 'proto/shared'
+   import { workflowPhaseNames, workflowPhaseLabels, workflowAllPhaseSteps } from '@tleblancureta/proto/shared'
    export const APPROVAL_PHASES = workflowPhaseNames(approvalWorkflow)
    export const APPROVAL_PHASE_LABELS = workflowPhaseLabels(approvalWorkflow)
    export const APPROVAL_PHASE_STEPS = workflowAllPhaseSteps(approvalWorkflow)
@@ -167,7 +167,7 @@ Si la tabla del nuevo workflow tiene nombres distintos, overrideá via el field 
 4. **Smoke test** — verificá que los tools se generaron:
    ```bash
    cd examples/<app> && npx tsx -e "
-   const { createProtoMcp } = await import('proto/mcp')
+   const { createProtoMcp } = await import('@tleblancureta/proto/mcp')
    const app = await createProtoMcp({ name: '<app>' })
    console.log('tools:', app.toolCount)
    "

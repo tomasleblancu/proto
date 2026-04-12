@@ -1,5 +1,5 @@
-import { supabase } from 'proto/web'
-import { useData } from 'proto/web'
+import { supabase } from '@tleblancureta/proto/web'
+import { useData } from '@tleblancureta/proto/web'
 
 const DOC_LABELS: Record<string, string> = {
   proforma_invoice: 'Proforma',

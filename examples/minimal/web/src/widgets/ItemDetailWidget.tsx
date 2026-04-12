@@ -1,5 +1,5 @@
-import { defineWidget, useData, supabase, Card, CardContent, CardHeader } from 'proto/web'
-import type { ShellContext } from 'proto/web'
+import { defineWidget, useData, supabase, Card, CardContent, CardHeader } from '@tleblancureta/proto/web'
+import type { ShellContext } from '@tleblancureta/proto/web'
 
 export default defineWidget({
   type: 'item-detail',

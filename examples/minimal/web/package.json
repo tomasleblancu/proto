@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "proto": "^0.1.0",
+    "@tleblancureta/proto": "^0.1.0",
     "@supabase/supabase-js": "^2.49.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.7.0",

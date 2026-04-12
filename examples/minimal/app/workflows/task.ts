@@ -1,4 +1,4 @@
-import { defineWorkflow } from 'proto/shared'
+import { defineWorkflow } from '@tleblancureta/proto/shared'
 
 export default defineWorkflow({
   name: 'task',

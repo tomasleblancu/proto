@@ -1,6 +1,6 @@
 import type { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
-import { chatRequestSchema } from 'proto/shared'
+import { chatRequestSchema } from '@tleblancureta/proto/shared'
 import { verifySecret } from '../auth.js'
 import { runClaude, streamClaude } from '../claude-runner.js'
 import { checkRateLimit } from '../rate-limiter.js'

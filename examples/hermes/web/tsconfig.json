@@ -14,10 +14,10 @@
     "paths": {
       "@/*": ["./src/*"],
       "@app/*": ["../app/*"],
-      "proto/web": ["../../../packages/proto/core-web/src"],
-      "proto/web/*": ["../../../packages/proto/core-web/src/*"],
-      "proto/shared": ["../../../packages/proto/core-shared/src"],
-      "proto/shared/*": ["../../../packages/proto/core-shared/src/*"]
+      "@tleblancureta/proto/web": ["../../../packages/proto/core-web/src"],
+      "@tleblancureta/proto/web/*": ["../../../packages/proto/core-web/src/*"],
+      "@tleblancureta/proto/shared": ["../../../packages/proto/core-shared/src"],
+      "@tleblancureta/proto/shared/*": ["../../../packages/proto/core-shared/src/*"]
     }
   },
   "include": ["src"]

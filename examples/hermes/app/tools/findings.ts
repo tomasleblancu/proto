@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool, getSupabase, err, json } from 'proto/mcp'
+import { defineTool, getSupabase, err, json } from '@tleblancureta/proto/mcp'
 
 const SOURCES = ['email', 'document', 'manual', 'agent_inference'] as const
 const CATEGORIES = [

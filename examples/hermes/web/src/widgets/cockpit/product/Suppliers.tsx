@@ -1,8 +1,8 @@
-import { supabase } from 'proto/web'
-import { Badge } from 'proto/web'
-import { Skeleton } from 'proto/web'
-import { cacheGet, cacheSet } from 'proto/web'
-import { useData } from 'proto/web'
+import { supabase } from '@tleblancureta/proto/web'
+import { Badge } from '@tleblancureta/proto/web'
+import { Skeleton } from '@tleblancureta/proto/web'
+import { cacheGet, cacheSet } from '@tleblancureta/proto/web'
+import { useData } from '@tleblancureta/proto/web'
 import { StarIcon } from 'lucide-react'
 import { BaseProps } from './shared'
 

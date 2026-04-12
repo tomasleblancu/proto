@@ -59,9 +59,9 @@ proto/
 One package, three subpath exports:
 
 ```ts
-import { defineTool, getSupabase, err, json } from 'proto/mcp'
-import { defineWidget, useData, supabase, ProtoApp } from 'proto/web'
-import { defineEntity, defineWorkflow } from 'proto/shared'
+import { defineTool, getSupabase, err, json } from '@tleblancureta/proto/mcp'
+import { defineWidget, useData, supabase, ProtoApp } from '@tleblancureta/proto/web'
+import { defineEntity, defineWorkflow } from '@tleblancureta/proto/shared'
 ```
 
 ## What the app developer writes
@@ -84,7 +84,7 @@ create table items (
 ### 2. Tools (what the agent can do)
 ```ts
 // app/tools/items.ts
-import { defineTool, getSupabase, err, json } from 'proto/mcp'
+import { defineTool, getSupabase, err, json } from '@tleblancureta/proto/mcp'
 import { z } from 'zod'
 
 export default [
@@ -105,8 +105,8 @@ Tools are auto-discovered from `app/tools/*.ts`. Each file exports `default [def
 ### 3. Widgets (what the user sees)
 ```tsx
 // web/src/widgets/ItemsWidget.tsx
-import { defineWidget, useData, supabase } from 'proto/web'
-import type { ShellContext } from 'proto/web'
+import { defineWidget, useData, supabase } from '@tleblancureta/proto/web'
+import type { ShellContext } from '@tleblancureta/proto/web'
 
 export default defineWidget({
   type: 'items',
@@ -139,11 +139,11 @@ Widgets are auto-discovered from `web/src/widgets/*.tsx` via `import.meta.glob`.
 
 ```ts
 // app/entities/item.ts — activatable entity with cockpit mode
-import { defineEntity } from 'proto/shared'
+import { defineEntity } from '@tleblancureta/proto/shared'
 export default defineEntity({ name: 'item', table: 'items', labelField: 'name', cockpit: { widgets, layouts } })
 
 // app/workflows/task.ts — state machine with auto-generated tools
-import { defineWorkflow } from 'proto/shared'
+import { defineWorkflow } from '@tleblancureta/proto/shared'
 export default defineWorkflow({ name: 'task', entityTable: 'tasks', phases: [...] })
 ```
 
@@ -163,17 +163,17 @@ All auto-discovered. Drop files, they load.
 
 ```ts
 // app/mcp.ts — 2 lines
-import { createProtoMcp } from 'proto/mcp'
+import { createProtoMcp } from '@tleblancureta/proto/mcp'
 const app = await createProtoMcp({ name: 'my-app' })
 await app.stdio()
 
 // app/mcp-http.ts — 2 lines
-import { createProtoMcp } from 'proto/mcp'
+import { createProtoMcp } from '@tleblancureta/proto/mcp'
 const app = await createProtoMcp({ name: 'my-app' })
 await app.http()
 
 // web/src/App.tsx — auto-discovers widgets + entities
-import { ProtoApp } from 'proto/web'
+import { ProtoApp } from '@tleblancureta/proto/web'
 const mods = import.meta.glob('./widgets/*.tsx', { eager: true })
 const WIDGETS = Object.values(mods).map(m => m.default).filter(Boolean)
 export default function App() { return <ProtoApp widgets={WIDGETS} /> }
@@ -236,7 +236,7 @@ npm run dev:minimal-web  # minimal frontend on :3002
 ```bash
 cd examples/hermes && npx tsx --eval "
 async function main() {
-  const { createProtoMcp } = await import('proto/mcp')
+  const { createProtoMcp } = await import('@tleblancureta/proto/mcp')
   const app = await createProtoMcp({ name: 'hermes' })
   console.log('tools:', app.toolCount)
 }

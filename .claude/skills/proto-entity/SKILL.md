@@ -31,7 +31,7 @@ examples/hermes/app/entities/
 
 ```ts
 // examples/hermes/app/entities/invoice.ts
-import { defineEntity } from 'proto/shared'
+import { defineEntity } from '@tleblancureta/proto/shared'
 
 export default defineEntity({
   name: 'invoice',              // usado como activeEntity.type + sufijo de tool
@@ -93,7 +93,7 @@ export default defineEntity({
 3. **Smoke test** — verificá que los 3 tools auto-generados aparecen:
    ```bash
    cd examples/<app> && npx tsx -e "
-   const { createProtoMcp } = await import('proto/mcp')
+   const { createProtoMcp } = await import('@tleblancureta/proto/mcp')
    const app = await createProtoMcp({ name: '<app>' })
    console.log('tools:', app.toolCount)
    "

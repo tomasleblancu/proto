@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool, getSupabase, agent, agentErr } from 'proto/mcp'
+import { defineTool, getSupabase, agent, agentErr } from '@tleblancureta/proto/mcp'
 import { PAYMENT_TYPES, PAYMENT_STATUSES, DEFAULT_PAYEE, type PaymentType } from '../shared/index.js'
 
 const COSTING_MAP: Record<string, string> = {

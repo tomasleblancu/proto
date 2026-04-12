@@ -5,7 +5,7 @@
  * App.tsx builds the registry via buildWidgetRegistry(WIDGETS) and passes it
  * to Shell.
  */
-import { defineWidget } from 'proto/web'
+import { defineWidget } from '@tleblancureta/proto/web'
 import OrdersWidget from './OrdersWidget'
 import ProductsWidget from './ProductsWidget'
 import DocsWidget from './DocsWidget'

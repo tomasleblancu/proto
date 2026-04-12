@@ -89,7 +89,7 @@ ENV PROTO_APP_ROOT=/app/examples/<app>
 4. **Smoke test:**
    ```bash
    npx tsx -e "
-   import { createMcpServer } from 'proto/mcp'
+   import { createMcpServer } from '@tleblancureta/proto/mcp'
    import { registerAppTools } from './examples/<app>/app/tools/index.ts'
    const s = createMcpServer({ name: 'test', version: '0.1.0' })
    registerAppTools(s)

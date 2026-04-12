@@ -7,7 +7,7 @@
  *
  * Usage:
  *
- *   import { ProtoApp, defineWidget } from 'proto/web'
+ *   import { ProtoApp, defineWidget } from '@tleblancureta/proto/web'
  *
  *   const widgets = [
  *     defineWidget({ type: 'items', title: 'Items', ... }),
@@ -23,7 +23,7 @@ import { useAuth } from './hooks/useAuth'
 import { useTheme } from './hooks/useTheme'
 import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget'
 import { protoSocket } from './lib/api'
-import type { EntityDefinition } from 'proto/shared'
+import type { EntityDefinition } from '../../core-shared/src/index.js'
 import type { ActiveEntity, WidgetInstance } from './components/shell/types'
 
 export interface ProtoAppProps {

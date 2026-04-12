@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { supabase } from 'proto/web'
-import { useData } from 'proto/web'
+import { supabase } from '@tleblancureta/proto/web'
+import { useData } from '@tleblancureta/proto/web'
 import { EyeIcon } from 'lucide-react'
 import { DocPreviewModal } from '../components/DocPreviewModal'
 

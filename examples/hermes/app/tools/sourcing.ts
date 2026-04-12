@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { randomUUID, createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { defineTool, getSupabase } from 'proto/mcp'
+import { defineTool, getSupabase } from '@tleblancureta/proto/mcp'
 
 // In-memory cache: sha256(image bytes) -> { offers, expiresAt }
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24h

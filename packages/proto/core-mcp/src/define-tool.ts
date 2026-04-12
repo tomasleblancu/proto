@@ -8,7 +8,7 @@
  *
  * Example (app-space):
  *
- *   import { defineTool } from 'proto/mcp'
+ *   import { defineTool } from '@tleblancureta/proto/mcp'
  *   import { z } from 'zod'
  *
  *   export default [

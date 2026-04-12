@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool, getSupabase } from 'proto/mcp'
+import { defineTool, getSupabase } from '@tleblancureta/proto/mcp'
 
 const COMPANY_ID = () => process.env.COMPANY_ID || ''
 

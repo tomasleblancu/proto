@@ -4,7 +4,7 @@
  * findings, timeline) and injects a fresh markdown snapshot on every chat
  * turn so the agent doesn't need to burn tool calls on basic reads.
  */
-import { defineEntity } from 'proto/shared'
+import { defineEntity } from '@tleblancureta/proto/shared'
 import { PHASE_LABELS, PHASE_STEPS, type Phase } from '../shared/index.js'
 
 interface SupabaseLike {

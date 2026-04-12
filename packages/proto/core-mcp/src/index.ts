@@ -6,7 +6,7 @@
  *
  * Apps consume this as a library:
  *
- *   import { createMcpServer, runStdio } from 'proto/mcp'
+ *   import { createMcpServer, runStdio } from '@tleblancureta/proto/mcp'
  *   const server = createMcpServer({ name: 'my-app' })
  *   registerMyTools(server)
  *   await runStdio(server)

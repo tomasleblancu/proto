@@ -1,4 +1,4 @@
-import { defineEntity } from 'proto/shared'
+import { defineEntity } from '@tleblancureta/proto/shared'
 
 export default defineEntity({
   name: 'item',

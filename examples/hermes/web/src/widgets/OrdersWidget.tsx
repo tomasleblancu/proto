@@ -1,7 +1,7 @@
-import { supabase } from 'proto/web'
-import { useData } from 'proto/web'
-import { Badge } from 'proto/web'
-import { Skeleton } from 'proto/web'
+import { supabase } from '@tleblancureta/proto/web'
+import { useData } from '@tleblancureta/proto/web'
+import { Badge } from '@tleblancureta/proto/web'
+import { Skeleton } from '@tleblancureta/proto/web'
 import { PlusIcon } from 'lucide-react'
 
 const PHASE: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {

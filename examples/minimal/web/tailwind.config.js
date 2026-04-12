@@ -4,7 +4,7 @@ const { resolve } = require('path')
 const monorepoCorePath = resolve(__dirname, '../../../packages/proto/core-web/src')
 const coreWebContent = existsSync(monorepoCorePath)
   ? `${monorepoCorePath}/**/*.{ts,tsx}`
-  : './node_modules/@proto/core-web/src/**/*.{ts,tsx}'
+  : './node_modules/@tleblancureta/proto/core-web/src/**/*.{ts,tsx}'
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {

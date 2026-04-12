@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { readFileSync, existsSync } from 'node:fs'
 import { basename, extname } from 'node:path'
-import { defineTool, getSupabase, agent, agentErr } from 'proto/mcp'
+import { defineTool, getSupabase, agent, agentErr } from '@tleblancureta/proto/mcp'
 import {
   DOC_TYPES,
   DOC_KINDS,

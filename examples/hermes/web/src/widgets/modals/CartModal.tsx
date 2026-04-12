@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { supabase } from 'proto/web'
-import { ShellDialog } from 'proto/web'
+import { supabase } from '@tleblancureta/proto/web'
+import { ShellDialog } from '@tleblancureta/proto/web'
 import { MinusIcon, PlusIcon, TrashIcon, Loader2Icon } from 'lucide-react'
 import type { CartItem } from '../../shared/types'
 

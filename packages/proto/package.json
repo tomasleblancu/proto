@@ -1,23 +1,46 @@
 {
-  "name": "proto",
+  "name": "@tleblancureta/proto",
   "version": "0.1.0",
   "type": "module",
-  "exports": {
-    "./mcp": "./mcp.ts",
-    "./web": "./web.ts",
-    "./shared": "./shared.ts"
+  "description": "TypeScript framework for building AI-agent-driven apps. Define tools, widgets, and data models — get chat, Shell dashboard, auth, MCP server, and Claude CLI integration.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tomasleblancu/proto.git",
+    "directory": "packages/proto"
   },
+  "exports": {
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "default": "./dist/mcp.js"
+    },
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "default": "./dist/web.js"
+    },
+    "./shared": {
+      "types": "./dist/shared.d.ts",
+      "default": "./dist/shared.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "core-web/src/"
+  ],
   "scripts": {
-    "build": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {
+  "peerDependencies": {
     "@modelcontextprotocol/sdk": "^1.27.0",
     "@supabase/supabase-js": "^2.49.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
     "clsx": "^2.1.1",
     "lucide-react": "^1.7.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "react-grid-layout": "^2.2.3",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
@@ -25,9 +48,13 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@supabase/supabase-js": "^2.49.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/react-grid-layout": "^1.3.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

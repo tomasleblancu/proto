@@ -41,7 +41,7 @@ Cada archivo exporta por default un array de `defineTool` calls:
 ```ts
 // examples/hermes/app/tools/items.ts
 import { z } from 'zod'
-import { defineTool, getSupabase, err, json } from 'proto/mcp'
+import { defineTool, getSupabase, err, json } from '@tleblancureta/proto/mcp'
 import { PHASES, type Phase, isValidStep } from '../shared/index.js'
 
 export default [
@@ -115,7 +115,7 @@ return agent({
 2. **Smoke test** — verificá que registra sin errores:
    ```bash
    cd examples/<app> && npx tsx -e "
-   const { createProtoMcp } = await import('proto/mcp')
+   const { createProtoMcp } = await import('@tleblancureta/proto/mcp')
    const app = await createProtoMcp({ name: '<app>' })
    console.log('tools:', app.toolCount)
    "

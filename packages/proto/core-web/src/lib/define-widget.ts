@@ -11,7 +11,7 @@
  *
  * Example augmentation in an app:
  *
- *   declare module 'proto/web' {
+ *   declare module '@tleblancureta/proto/web' {
  *     interface ShellContext {
  *       cartItems: CartItem[]
  *       addToCart: (item: CartItem) => void

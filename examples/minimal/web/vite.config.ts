@@ -10,8 +10,8 @@ function monorepoAliases(): Record<string, string> {
   const coreShared = resolve(__dirname, '../../../packages/proto/core-shared/src')
   if (!existsSync(coreWeb)) return {}
   return {
-    'proto/web': coreWeb,
-    'proto/shared': coreShared,
+    '@tleblancureta/proto/web': coreWeb,
+    '@tleblancureta/proto/shared': coreShared,
   }
 }
 
