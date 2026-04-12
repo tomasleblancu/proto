@@ -9,6 +9,7 @@
 export { default as Shell, type CockpitDefinition } from './components/Shell.js'
 export { ProtoApp, type ProtoAppProps } from './ProtoApp.js'
 export { AdminPanel } from './components/admin/AdminPanel.js'
+export { LoginForm } from './components/LoginForm.js'
 
 // Extension API
 export {

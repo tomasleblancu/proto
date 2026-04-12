@@ -21,6 +21,7 @@ import { useState, useCallback, useRef, useMemo } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Shell, { type CockpitDefinition } from './components/Shell.js'
 import { AdminPanel } from './components/admin/AdminPanel.js'
+import { LoginForm } from './components/LoginForm.js'
 import { useAuth } from './hooks/useAuth.js'
 import { useTheme } from './hooks/useTheme.js'
 import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget.js'
@@ -48,21 +49,13 @@ export interface ProtoAppProps {
   loginComponent?: React.ComponentType
 }
 
-function DefaultLogin() {
-  return (
-    <div className="flex h-screen items-center justify-center text-muted-foreground">
-      Please sign in.
-    </div>
-  )
-}
-
 export function ProtoApp({
   widgets: widgetDefs,
   entities = [],
   defaultWidgets: defaultWidgetsProp,
   defaultLayouts: defaultLayoutsProp,
   appName,
-  loginComponent: LoginComponent = DefaultLogin,
+  loginComponent: LoginComponent = LoginForm,
 }: ProtoAppProps) {
   useTheme()
 
