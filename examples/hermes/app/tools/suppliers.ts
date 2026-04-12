@@ -6,7 +6,6 @@ export default [
     name: 'create_supplier',
     description: 'Crea un proveedor para una empresa. Requerido antes de crear muestras.',
     schema: {
-      company_id: z.string(),
       name: z.string(),
       country_code: z.string().optional(),
       contact_name: z.string().optional(),
@@ -15,9 +14,10 @@ export default [
       website: z.string().optional(),
       notes: z.string().optional(),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
-      const { data, error } = await db.from('suppliers').insert(args).select().single()
+      const { data, error } = await db.from('suppliers').insert({ ...args, company_id }).select().single()
       return error ? err(error.message) : json(data)
     },
   }),
@@ -28,7 +28,6 @@ export default [
     schema: {
       product_id: z.string(),
       supplier_id: z.string(),
-      company_id: z.string(),
       unit_price: z.number().optional().describe('Precio unitario del proveedor'),
       currency: z.string().default('USD'),
       moq: z.number().optional().describe('Minimum order quantity'),
@@ -36,9 +35,10 @@ export default [
       is_preferred: z.boolean().default(false).describe('Marcar como proveedor preferido'),
       notes: z.string().optional(),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
-      const { data, error } = await db.from('product_suppliers').insert(args).select('*, suppliers(name)').single()
+      const { data, error } = await db.from('product_suppliers').insert({ ...args, company_id }).select('*, suppliers(name)').single()
       return error ? err(error.message) : json(data)
     },
   }),

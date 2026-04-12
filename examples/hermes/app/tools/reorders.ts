@@ -6,20 +6,20 @@ export default [
     name: 'create_reorder_rule',
     description: 'Define a reorder rule for a product with a known supplier.',
     schema: {
-      company_id: z.string().describe('Company ID'),
       supplier_name: z.string().describe('Supplier name'),
       product_description: z.string().describe('Product description'),
       quantity: z.number().describe('Quantity to reorder'),
       frequency_days: z.number().describe('Reorder frequency in days'),
       lead_time_days: z.number().default(0).describe('Lead time in days'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       const nextDate = new Date()
       nextDate.setDate(nextDate.getDate() + args.frequency_days)
 
       const { data, error } = await db.from('reorder_rules').insert({
-        company_id: args.company_id,
+        company_id,
         supplier_name: args.supplier_name,
         product_description: args.product_description,
         quantity: args.quantity,
@@ -37,10 +37,8 @@ export default [
   defineTool({
     name: 'check_reorders',
     description: 'Check which products are due for reorder based on their rules.',
-    schema: {
-      company_id: z.string().optional().describe('Filter by company'),
-    },
-    handler: async (args) => {
+    schema: {},
+    handler: async (_args, ctx) => {
       const db = getSupabase()
       const today = new Date().toISOString().split('T')[0]
 
@@ -49,7 +47,7 @@ export default [
         .eq('active', true)
         .lte('next_order_date', today)
 
-      if (args.company_id) query = query.eq('company_id', args.company_id)
+      if (ctx.company_id) query = query.eq('company_id', ctx.company_id)
 
       const { data, error } = await query
       if (error) return { content: [{ type: 'text' as const, text: `Error: ${error.message}` }] }
@@ -129,14 +127,13 @@ export default [
     name: 'list_reorder_rules',
     description: 'List all reorder rules, optionally filtered by company.',
     schema: {
-      company_id: z.string().optional().describe('Filter by company'),
       active_only: z.boolean().default(true).describe('Only show active rules'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
       const db = getSupabase()
       let query = db.from('reorder_rules').select('*').order('next_order_date', { ascending: true })
 
-      if (args.company_id) query = query.eq('company_id', args.company_id)
+      if (ctx.company_id) query = query.eq('company_id', ctx.company_id)
       if (args.active_only) query = query.eq('active', true)
 
       const { data, error } = await query

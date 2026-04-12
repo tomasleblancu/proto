@@ -6,7 +6,7 @@
  * render a muted fallback so the agent can iterate.
  */
 import type { ComponentType, ReactNode } from 'react'
-import * as P from './Primitives'
+import * as P from './Primitives.js'
 
 export interface UINode {
   type: string

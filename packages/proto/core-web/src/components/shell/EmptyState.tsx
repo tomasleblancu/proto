@@ -1,6 +1,6 @@
 import { PlusIcon } from 'lucide-react'
-import { Button } from '../ui/button'
-import type { WidgetType } from './types'
+import { Button } from '../ui/button.js'
+import type { WidgetType } from './types.js'
 
 interface CatalogEntry {
   type: WidgetType

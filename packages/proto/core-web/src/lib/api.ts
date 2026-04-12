@@ -1,4 +1,4 @@
-import { GATEWAY_URL, INTERNAL_SECRET as SECRET, WS_URL } from './config'
+import { GATEWAY_URL, INTERNAL_SECRET as SECRET, WS_URL } from './config.js'
 
 export interface StreamEvent {
   type: 'init' | 'text' | 'tool_use' | 'tool_result' | 'result' | 'error' | 'thinking' | 'auth' | 'pong' | 'shell_refresh'

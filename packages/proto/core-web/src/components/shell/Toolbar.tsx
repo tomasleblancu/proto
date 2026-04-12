@@ -1,9 +1,9 @@
 import { useState, useCallback, type ReactNode } from 'react'
-import { useMountEffect } from '../../hooks/useMountEffect'
-import { Button } from '../ui/button'
+import { useMountEffect } from '../../hooks/useMountEffect.js'
+import { Button } from '../ui/button.js'
 import { PlusIcon, RotateCcwIcon, SunIcon, MoonIcon, MonitorIcon, UserIcon, LogOutIcon, Building2Icon, ChevronDownIcon, CheckIcon, XIcon, HomeIcon, SettingsIcon, LayoutGridIcon } from 'lucide-react'
-import { useTheme, type Theme } from '../../hooks/useTheme'
-import type { ActiveEntity, WidgetType } from './types'
+import { useTheme, type Theme } from '../../hooks/useTheme.js'
+import type { ActiveEntity, WidgetType } from './types.js'
 
 interface CatalogEntry {
   type: WidgetType

@@ -36,16 +36,16 @@ export default [
     description: 'Upload a document linked to an import order.',
     schema: {
       order_id: z.string().describe('Order ID'),
-      company_id: z.string().describe('Company ID'),
       doc_type: z.enum(DOC_TYPES).describe('Document type'),
       filename: z.string().describe('Original filename'),
       storage_path: z.string().describe('Path in Supabase Storage'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       const { data, error } = await db.from('documents').insert({
         order_id: args.order_id,
-        company_id: args.company_id,
+        company_id,
         doc_type: args.doc_type,
         filename: args.filename,
         storage_path: args.storage_path,
@@ -128,7 +128,6 @@ export default [
     name: 'attach_document',
     description: 'Adjunta un documento tipado (state-machine aware) a un pedido/item. USA SIEMPRE ESTE TOOL con `kind` explicito — no uses upload_document. Si el doc dispara pago, devuelve un hint para que registres el payment. Si es un comprobante de pago, pasa `receipt_for_document_id` apuntando a la factura original.',
     schema: {
-      company_id: z.string(),
       order_id: z.string(),
       kind: z.enum(DOC_KINDS),
       filename: z.string(),
@@ -137,12 +136,14 @@ export default [
       extracted: z.record(z.any()).describe('Contenido estructurado extraido del documento (montos, fechas, items). OBLIGATORIO — lee el archivo antes de adjuntar.'),
       receipt_for_document_id: z.string().optional().describe('Si kind=payment_receipt, id de la factura que este comprobante justifica.'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       const triggers_payment = DOCS_THAT_TRIGGER_PAYMENT.includes(args.kind as DocKind)
       const { receipt_for_document_id, extracted, ...rest } = args
       const { data, error } = await db.from('documents').insert({
         ...rest,
+        company_id,
         doc_type: LEGACY_DOC_TYPE[args.kind] || 'other',
         triggers_payment,
         upload_status: 'attached',
@@ -259,11 +260,11 @@ export default [
     description: 'Sube un archivo local a Supabase Storage y devuelve el storage_path. Usalo SIEMPRE despues de que el usuario suba un archivo por chat — el archivo temporal se borra en 5 min.',
     schema: {
       local_path: z.string().describe('Path absoluto del archivo local'),
-      company_id: z.string().describe('Company ID'),
       order_id: z.string().optional().describe('Order ID'),
       filename: z.string().optional().describe('Nombre del archivo para Storage'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       if (!existsSync(args.local_path)) {
         return agentErr(`Archivo no encontrado: ${args.local_path}. Puede que ya se haya borrado (TTL 5 min).`)
       }
@@ -287,7 +288,7 @@ export default [
       const contentType = MIME_MAP[ext] || 'application/octet-stream'
 
       const ts = Date.now()
-      const folder = args.order_id ? `${args.company_id}/${args.order_id}` : args.company_id
+      const folder = args.order_id ? `${company_id}/${args.order_id}` : company_id
       const storagePath = `${folder}/${ts}-${name}`
 
       const db = getSupabase()

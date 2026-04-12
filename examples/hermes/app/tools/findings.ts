@@ -19,7 +19,6 @@ export default [
     ].join(' '),
     schema: {
       order_id: z.string(),
-      company_id: z.string(),
       source: z.enum(SOURCES),
       summary: z.string().describe('Una linea corta: "Carga llego a San Antonio"'),
       details: z.string().optional().describe('Texto libre con mas contexto'),
@@ -31,9 +30,10 @@ export default [
       document_id: z.string().optional(),
       occurred_at: z.string().optional().describe('ISO timestamp del evento (no el de registro)'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
-      const payload: any = { ...args }
+      const payload: any = { ...args, company_id }
       if (!payload.category) payload.category = 'status_update'
       if (payload.gmail_message_id) {
         const { data: existing } = await db

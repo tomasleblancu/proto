@@ -8,7 +8,6 @@ export default [
     name: 'create_order',
     description: 'Create a new import order. Initial status: draft.',
     schema: {
-      company_id: z.string().describe('Company ID'),
       supplier_name: z.string().describe('Supplier name'),
       supplier_contact: z.string().optional().describe('Supplier contact info'),
       products: z.array(z.object({
@@ -25,10 +24,11 @@ export default [
       payment_terms: z.string().optional().describe('Payment terms'),
       estimated_arrival: z.string().optional().describe('Estimated arrival date (YYYY-MM-DD)'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       const { data, error } = await db.from('orders').insert({
-        company_id: args.company_id,
+        company_id,
         supplier_name: args.supplier_name,
         supplier_contact: args.supplier_contact,
         products: args.products,
@@ -223,16 +223,15 @@ export default [
     name: 'list_orders',
     description: 'List orders, optionally filtered by status or company.',
     schema: {
-      company_id: z.string().optional().describe('Filter by company'),
       status: z.string().optional().describe('Filter by status'),
       limit: z.number().default(20).describe('Max results'),
       offset: z.number().default(0).describe('Offset for pagination'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
       const db = getSupabase()
       let query = db.from('orders').select('*').order('created_at', { ascending: false })
 
-      if (args.company_id) query = query.eq('company_id', args.company_id)
+      if (ctx.company_id) query = query.eq('company_id', ctx.company_id)
       if (args.status) query = query.eq('status', args.status)
       query = query.range(args.offset, args.offset + args.limit - 1)
 

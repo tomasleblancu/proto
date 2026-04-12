@@ -94,10 +94,10 @@ export default [
   defineTool({
     name: 'create_item',
     description: 'Create a new item.',
-    schema: { company_id: z.string(), name: z.string() },
-    handler: async (args) => {
+    schema: { name: z.string() },
+    handler: async (args, ctx) => {
       const db = getSupabase()
-      const { data, error } = await db.from('items').insert(args).select().single()
+      const { data, error } = await db.from('items').insert({ ...args, company_id: ctx.company_id }).select().single()
       return error ? err(error.message) : json(data)
     },
   }),
@@ -279,10 +279,10 @@ Only inside reusable hooks (`useData`, `useMountEffect`). See checklist in code.
 Core packages must not import from apps. `grep -r 'orders\|products\|supplier' packages/proto/core-*/src/` should return only generic mentions.
 
 ### Tool context via ctx, not args
-New tools should read `company_id` from session context, not as an agent parameter (legacy: 89 hermes tools still use args).
+Tools read `company_id` from the `ctx` parameter (injected by the framework from env vars), not as a schema argument. The handler signature is `(args, ctx) => ...` where `ctx.company_id` and `ctx.user_id` are available.
 
 ### File size limits
-No file over ~400 lines. Pending splits: `Admin.tsx` (1286L), `Chat.tsx` (553L).
+No file over ~400 lines.
 
 ### Naming conventions
 - React components → `PascalCase.tsx`

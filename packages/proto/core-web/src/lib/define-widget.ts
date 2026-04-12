@@ -19,7 +19,7 @@
  *   }
  */
 import type { ReactNode } from 'react'
-import type { ActiveEntity, WidgetInstance } from '../components/shell/types'
+import type { ActiveEntity, WidgetInstance } from '../components/shell/types.js'
 
 export interface ShellContext {
   companyId: string

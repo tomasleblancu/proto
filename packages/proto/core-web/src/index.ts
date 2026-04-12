@@ -6,8 +6,8 @@
  */
 
 // Framework components
-export { default as Shell, type CockpitDefinition } from './components/Shell'
-export { ProtoApp, type ProtoAppProps } from './ProtoApp'
+export { default as Shell, type CockpitDefinition } from './components/Shell.js'
+export { ProtoApp, type ProtoAppProps } from './ProtoApp.js'
 
 // Extension API
 export {
@@ -18,35 +18,35 @@ export {
   type WidgetCategory,
   type WidgetSize,
   type ShellContext,
-} from './lib/define-widget'
-export type { ActiveEntity, WidgetInstance, WidgetType } from './components/shell/types'
+} from './lib/define-widget.js'
+export type { ActiveEntity, WidgetInstance, WidgetType } from './components/shell/types.js'
 
 // Hooks
-export { useAuth } from './hooks/useAuth'
-export { useData } from './hooks/useData'
-export { useMountEffect } from './hooks/useMountEffect'
-export { useTheme, type Theme } from './hooks/useTheme'
+export { useAuth } from './hooks/useAuth.js'
+export { useData } from './hooks/useData.js'
+export { useMountEffect } from './hooks/useMountEffect.js'
+export { useTheme, type Theme } from './hooks/useTheme.js'
 
 // Lib
-export * from './lib/api'
-export * from './lib/config'
-export { supabase } from './lib/supabase'
-export { cn } from './lib/utils'
-export * from './lib/drag'
-export * from './lib/widgetCache'
+export * from './lib/api.js'
+export * from './lib/config.js'
+export { supabase } from './lib/supabase.js'
+export { cn } from './lib/utils.js'
+export * from './lib/drag.js'
+export * from './lib/widgetCache.js'
 
 // Agent runtime (render_ui)
-export { Generative } from './components/widgets/agent/Generative'
+export { Generative } from './components/widgets/agent/Generative.js'
 
 // UI primitives (shadcn)
-export { Avatar, AvatarFallback } from './components/ui/avatar'
-export { Badge } from './components/ui/badge'
-export { Button } from './components/ui/button'
-export { Card, CardContent, CardFooter, CardHeader } from './components/ui/card'
-export { InlineEdit } from './components/ui/inline-edit'
-export { Input } from './components/ui/input'
-export { ScrollArea } from './components/ui/scroll-area'
-export { Separator } from './components/ui/separator'
-export { ShellDialog } from './components/ui/shell-dialog'
-export { Skeleton } from './components/ui/skeleton'
-export { Textarea } from './components/ui/textarea'
+export { Avatar, AvatarFallback } from './components/ui/avatar.js'
+export { Badge } from './components/ui/badge.js'
+export { Button } from './components/ui/button.js'
+export { Card, CardContent, CardFooter, CardHeader } from './components/ui/card.js'
+export { InlineEdit } from './components/ui/inline-edit.js'
+export { Input } from './components/ui/input.js'
+export { ScrollArea } from './components/ui/scroll-area.js'
+export { Separator } from './components/ui/separator.js'
+export { ShellDialog } from './components/ui/shell-dialog.js'
+export { Skeleton } from './components/ui/skeleton.js'
+export { Textarea } from './components/ui/textarea.js'

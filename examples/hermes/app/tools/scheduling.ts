@@ -40,7 +40,6 @@ export default [
     name: 'schedule_task',
     description: 'Crea una tarea programada (cron) que ejecuta al agente con un prompt dado en intervalos regulares. Ej: "revisa mail cada 15 min", "escanea recompras todos los dias a las 9am". El cron_expr es formato estandar de 5 campos (min hora dia mes dow). Despues de crear, computa next_run_at automaticamente.',
     schema: {
-      company_id: z.string(),
       name: z.string().min(1).max(80).describe('Slug corto unico por empresa, ej: "check-inbox", "daily-reorders"'),
       description: z.string().optional().describe('Para que sirve esta tarea — se muestra en la UI'),
       cron_expr: z.string().describe('Expresion cron de 5 campos: "min hora dia mes dow". Ej: "*/15 * * * *" cada 15min, "0 9 * * *" 9am diario, "0 9 * * 1" lunes 9am'),
@@ -53,7 +52,8 @@ export default [
       output_recipient: z.string().email().optional().describe('Email de destino si output_channel="email". El remitente siempre es el mail del sistema Hermes, no la cuenta del usuario.'),
       notify_on: z.enum(TASK_NOTIFY_TRIGGERS).default('always').describe('Cuando disparar la notificacion: "always" en cada run, "on_change" solo si el status cambio, "on_error" solo en fallas, "never" nunca (util para desactivar temporalmente).'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       if (!isValidCronExpr(args.cron_expr)) {
         return err(`cron_expr invalido: "${args.cron_expr}". Formato esperado: 5 campos separados por espacio. Ejemplos: "*/15 * * * *", "0 9 * * *"`)
       }
@@ -62,7 +62,7 @@ export default [
       }
       const db = getSupabase()
       const { data, error } = await db.from('scheduled_tasks').insert({
-        company_id: args.company_id,
+        company_id,
         name: args.name,
         description: args.description,
         cron_expr: args.cron_expr,
@@ -87,10 +87,10 @@ export default [
     name: 'list_scheduled_tasks',
     description: 'Lista las tareas programadas de una empresa con su estado actual y proximo run.',
     schema: {
-      company_id: z.string(),
       include_disabled: z.boolean().default(true),
     },
-    handler: async ({ company_id, include_disabled }) => {
+    handler: async ({ include_disabled }, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       let q = db
         .from('scheduled_tasks')

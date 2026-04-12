@@ -2,84 +2,14 @@ import { useState, useRef, useCallback } from 'react'
 import { hermesSocket, sendChatWs, resetSession, type StreamEvent } from '@tleblancureta/proto/web'
 import { GATEWAY_URL, INTERNAL_SECRET } from '@tleblancureta/proto/web'
 import { supabase } from '@tleblancureta/proto/web'
-import { getDragData, hasDragData, buildAgentPrompt, type DragContext } from '@tleblancureta/proto/web'
+import { getDragData, hasDragData, buildAgentPrompt } from '@tleblancureta/proto/web'
 import ChatMessage from '../components/ChatMessage'
 import ChatContext from '../components/ChatContext'
 import ChatInput, { type Attachment } from '../components/ChatInput'
+import type { Message, ChatProps } from './chat/ChatTypes'
+import { ALL_SKILLS, SUGGESTIONS, sessionKeyFor, storageKey, loadMessages, saveMessages, handleStreamEvent } from './chat/ChatUtils'
 
-interface Message {
-  role: 'user' | 'assistant' | 'context'
-  text: string
-  images?: string[]
-  files?: { name: string; type: string }[]
-  loading?: boolean
-  toolCalls?: { tool: string; status: 'running' | 'done'; args?: Record<string, unknown> }[]
-  context?: DragContext  // for context cards
-}
-
-interface ActiveEntity {
-  type: 'order' | 'product'
-  id: string
-  label: string
-}
-
-interface Props {
-  companyId: string
-  userId: string
-  companyContext?: string
-  hasCompany: boolean
-  onStreamComplete?: () => void
-  onRegisterSend?: (fn: (msg: string) => void) => void
-  onRegisterClear?: (fn: () => void) => void
-  onMessagesChange?: (count: number) => void
-  onAgentMount?: (spec: any, title?: string) => void
-  onAgentActivateEntity?: (type: string, id: string) => void
-  onAgentDeactivateEntity?: (type: string) => void
-  activeEntity?: ActiveEntity | null
-  onClearEntity?: () => void
-}
-
-/** Parses `activate_<name>` / `deactivate_<name>` tool names (with optional MCP prefix). */
-function parseEntityToolName(tool: string | undefined, verb: 'activate' | 'deactivate'): string | null {
-  if (!tool) return null
-  const suffix = tool.includes('__') ? tool.split('__').pop()! : tool
-  const match = suffix.match(new RegExp(`^${verb}_([a-z_]+)$`))
-  return match ? match[1] : null
-}
-
-const ALL_SKILLS = ['hermes-company', 'hermes-products', 'hermes-intake', 'hermes-orders', 'hermes-documents', 'hermes-reorders', 'hermes-customs-cl', 'hermes-inventory', 'hermes-gmail', 'hermes-sourcing', 'hermes-ui', 'hermes-scheduling']
-
-const SUGGESTIONS = [
-  'Lista los pedidos activos',
-  'Crea un nuevo pedido de importacion',
-  'Revisa documentos pendientes',
-  'Muestra reglas de recompra',
-]
-
-function sessionKeyFor(activeEntity?: ActiveEntity | null) {
-  if (activeEntity?.type === 'order') return `order-${activeEntity.id}`
-  if (activeEntity?.type === 'product') return `product-${activeEntity.id}`
-  return 'web'
-}
-
-function storageKey(companyId: string, session: string) { return `hermes-chat-${companyId}-${session}` }
-
-function loadMessages(companyId: string, session: string): Message[] {
-  try {
-    const raw = localStorage.getItem(storageKey(companyId, session))
-    if (!raw) return []
-    return (JSON.parse(raw) as Message[]).map(m => ({
-      ...m, loading: false,
-      toolCalls: m.toolCalls?.map(tc => ({ ...tc, status: 'done' as const })),
-    }))
-  } catch { return [] }
-}
-
-function saveMessages(companyId: string, session: string, messages: Message[]) {
-  try { localStorage.setItem(storageKey(companyId, session), JSON.stringify(messages.filter(m => !m.loading || m.text))) } catch {}
-}
-
-export default function Chat({ companyId, userId, companyContext, hasCompany, onStreamComplete, onRegisterSend, onRegisterClear, onMessagesChange, onAgentMount, onAgentActivateEntity, onAgentDeactivateEntity, activeEntity, onClearEntity }: Props) {
+export default function Chat({ companyId, userId, companyContext, hasCompany, onStreamComplete, onRegisterSend, onRegisterClear, onMessagesChange, onAgentMount, onAgentActivateEntity, onAgentDeactivateEntity, activeEntity, onClearEntity }: ChatProps) {
   const sessionKey = sessionKeyFor(activeEntity)
   const [messages, setMessages] = useState<Message[]>(() => loadMessages(companyId, sessionKey))
   const [streaming, setStreaming] = useState(false)
@@ -149,77 +79,11 @@ export default function Chat({ companyId, userId, companyContext, hasCompany, on
 
     // Set up WS message handler for this chat turn
     hermesSocket.onMessage((event: StreamEvent) => {
-      setMessages(prev => {
-        const updated = [...prev]
-        const last = updated[updated.length - 1]
-        if (last.role !== 'assistant') return updated
-
-        const allDone = (tcs: typeof last.toolCalls) =>
-          (tcs || []).map(tc => ({ ...tc, status: 'done' as const }))
-
-        switch (event.type) {
-          case 'text':
-            updated[updated.length - 1] = {
-              ...last, text: last.text + (event.text || ''), loading: false,
-              toolCalls: allDone(last.toolCalls),
-            }
-            break
-          case 'tool_use':
-            if ((event.tool === 'render_ui' || event.tool?.endsWith('__render_ui')) && (event as any).args) {
-              const args = (event as any).args
-              onAgentMount?.(args.spec, args.title)
-            }
-            {
-              const activateName = parseEntityToolName(event.tool, 'activate')
-              if (activateName) {
-                const args = (event as any).args
-                const id = args?.[`${activateName}_id`]
-                if (id) onAgentActivateEntity?.(activateName, id)
-              }
-              const deactivateName = parseEntityToolName(event.tool, 'deactivate')
-              if (deactivateName) {
-                onAgentDeactivateEntity?.(deactivateName)
-              }
-            }
-            updated[updated.length - 1] = {
-              ...last,
-              toolCalls: [...allDone(last.toolCalls), { tool: event.tool || '', status: 'running', args: (event as any).args }],
-            }
-            break
-          case 'thinking':
-            updated[updated.length - 1] = {
-              ...last,
-              toolCalls: [...(last.toolCalls || []), { tool: '__thinking__', status: 'done', args: { text: event.text } }],
-            }
-            break
-          case 'tool_result':
-            updated[updated.length - 1] = { ...last, toolCalls: allDone(last.toolCalls) }
-            break
-          case 'result':
-            updated[updated.length - 1] = {
-              ...last, text: last.text || event.text || '', loading: false,
-              toolCalls: allDone(last.toolCalls),
-            }
-            setStreaming(false)
-            streamingRef.current = false
-            onStreamComplete?.()
-            saveMessages(companyId, sessionKey, updated)
-            drainQueue()
-            break
-          case 'error':
-            updated[updated.length - 1] = {
-              role: 'assistant', text: `Error: ${event.message}`,
-              toolCalls: allDone(last.toolCalls),
-            }
-            setStreaming(false)
-            streamingRef.current = false
-            onStreamComplete?.()
-            saveMessages(companyId, sessionKey, updated)
-            drainQueue()
-            break
-        }
-        scroll()
-        return updated
+      handleStreamEvent(event, {
+        setMessages, setStreaming, streamingRef, scroll,
+        onStreamComplete, onAgentMount, onAgentActivateEntity, onAgentDeactivateEntity,
+        save: (updated) => saveMessages(companyId, sessionKey, updated),
+        drainQueue,
       })
     })
 
@@ -380,52 +244,11 @@ export default function Chat({ companyId, userId, companyContext, hasCompany, on
       const prompt = buildAgentPrompt(ctx)
 
       hermesSocket.onMessage((event: StreamEvent) => {
-        setMessages(prev => {
-          const updated = [...prev]
-          const last = updated[updated.length - 1]
-          if (last.role !== 'assistant') return updated
-
-          const allDone = (tcs: typeof last.toolCalls) =>
-            (tcs || []).map(tc => ({ ...tc, status: 'done' as const }))
-
-          switch (event.type) {
-            case 'text':
-              updated[updated.length - 1] = { ...last, text: last.text + (event.text || ''), loading: false, toolCalls: allDone(last.toolCalls) }
-              break
-            case 'tool_use':
-              if ((event.tool === 'render_ui' || event.tool?.endsWith('__render_ui')) && (event as any).args) {
-                const args = (event as any).args
-                onAgentMount?.(args.spec, args.title)
-              }
-              updated[updated.length - 1] = { ...last, toolCalls: [...allDone(last.toolCalls), { tool: event.tool || '', status: 'running', args: (event as any).args }] }
-              break
-            case 'thinking':
-              updated[updated.length - 1] = {
-                ...last,
-                toolCalls: [...(last.toolCalls || []), { tool: '__thinking__', status: 'done', args: { text: event.text } }],
-              }
-              break
-            case 'tool_result':
-              updated[updated.length - 1] = { ...last, toolCalls: allDone(last.toolCalls) }
-              onStreamComplete?.()
-              break
-            case 'result':
-              updated[updated.length - 1] = { ...last, text: last.text || event.text || '', loading: false, toolCalls: allDone(last.toolCalls) }
-              setStreaming(false)
-              streamingRef.current = false
-              onStreamComplete?.()
-              saveMessages(companyId, sessionKey, updated)
-              break
-            case 'error':
-              updated[updated.length - 1] = { role: 'assistant', text: `Error: ${event.message}`, toolCalls: allDone(last.toolCalls) }
-              setStreaming(false)
-              streamingRef.current = false
-              onStreamComplete?.()
-              saveMessages(companyId, sessionKey, updated)
-              break
-          }
-          scroll()
-          return updated
+        handleStreamEvent(event, {
+          setMessages, setStreaming, streamingRef, scroll,
+          onStreamComplete, onAgentMount,
+          save: (updated) => saveMessages(companyId, sessionKey, updated),
+          notifyOnToolResult: true,
         })
       })
 

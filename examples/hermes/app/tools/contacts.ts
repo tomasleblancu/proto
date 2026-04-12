@@ -8,11 +8,11 @@ export default [
     name: 'list_contacts',
     description: 'Lista contactos de la empresa por rol (forwarder, customs_agent, supplier, other). Si se pasa order_id, mezcla defaults de empresa + overrides de esa orden. Devuelve todos los emails del rol para armar filtros de Gmail.',
     schema: {
-      company_id: z.string(),
       role: z.enum(ROLES).optional(),
       order_id: z.string().optional(),
     },
-    handler: async ({ company_id, role, order_id }) => {
+    handler: async ({ role, order_id }, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       let q = db.from('contacts').select('*').eq('company_id', company_id)
       if (role) q = q.eq('role', role)
@@ -33,7 +33,6 @@ export default [
     description: 'Crea o actualiza un contacto. Pasa id para actualizar, omitelo para crear. Un rol puede tener multiples contactos (varias personas del mismo forwarder, etc.).',
     schema: {
       id: z.string().optional(),
-      company_id: z.string(),
       order_id: z.string().nullable().optional(),
       role: z.enum(ROLES),
       name: z.string(),
@@ -42,18 +41,19 @@ export default [
       organization: z.string().nullable().optional(),
       notes: z.string().nullable().optional(),
     },
-    handler: async ({ id, ...rest }) => {
+    handler: async ({ id, ...rest }, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       if (id) {
         const { data, error } = await db
           .from('contacts')
-          .update({ ...rest, updated_at: new Date().toISOString() })
+          .update({ ...rest, company_id, updated_at: new Date().toISOString() })
           .eq('id', id)
           .select()
           .single()
         return error ? err(error.message) : json(data)
       }
-      const { data, error } = await db.from('contacts').insert(rest).select().single()
+      const { data, error } = await db.from('contacts').insert({ ...rest, company_id }).select().single()
       return error ? err(error.message) : json(data)
     },
   }),

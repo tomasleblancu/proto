@@ -7,7 +7,6 @@ export default [
     name: 'create_sample',
     description: 'Crea una muestra. El supplier debe existir en DB primero.',
     schema: {
-      company_id: z.string(),
       supplier_id: z.string(),
       description: z.string(),
       sku_candidate: z.string().optional(),
@@ -17,11 +16,12 @@ export default [
       shipping_method: z.enum(['courier', 'with_main_shipment', 'hand_carry']).optional(),
       order_id: z.string().optional(),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       const { data: supplier } = await db.from('suppliers').select('id').eq('id', args.supplier_id).single()
       if (!supplier) return err('Supplier no existe — creá el supplier antes de la muestra')
-      const { data, error } = await db.from('samples').insert({ ...args, status: 'requested' }).select().single()
+      const { data, error } = await db.from('samples').insert({ ...args, company_id, status: 'requested' }).select().single()
       return error ? err(error.message) : json(data)
     },
   }),
@@ -73,11 +73,11 @@ export default [
     name: 'list_samples',
     description: 'Lista muestras con filtros opcionales.',
     schema: {
-      company_id: z.string(),
       status: z.enum(SAMPLE_STATUSES).optional(),
       supplier_id: z.string().optional(),
     },
-    handler: async ({ company_id, status, supplier_id }) => {
+    handler: async ({ status, supplier_id }, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       let q = db.from('samples').select('*').eq('company_id', company_id)
       if (status) q = q.eq('status', status)

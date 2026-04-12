@@ -37,6 +37,12 @@ export interface ToolResult {
   [key: string]: unknown
 }
 
+export interface ToolContext {
+  company_id?: string
+  user_id?: string
+  [key: string]: unknown
+}
+
 /**
  * Handler signature. Receives validated args (inferred from the Zod schema)
  * and must return an MCP-shaped result. Throwing is allowed — the framework
@@ -44,6 +50,7 @@ export interface ToolResult {
  */
 export type ToolHandler<S extends z.ZodRawShape> = (
   args: z.infer<z.ZodObject<S>>,
+  ctx: ToolContext,
 ) => Promise<ToolResult> | ToolResult
 
 /**
@@ -84,8 +91,12 @@ export function registerTools(
       def.description,
       def.schema,
       async (args: Record<string, unknown>) => {
+        const ctx: ToolContext = {
+          company_id: process.env.COMPANY_ID || undefined,
+          user_id: process.env.USER_ID || undefined,
+        }
         try {
-          return await def.handler(args as never)
+          return await def.handler(args as never, ctx)
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
           return {

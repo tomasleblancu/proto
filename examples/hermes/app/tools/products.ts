@@ -6,7 +6,6 @@ export default [
     name: 'create_product',
     description: 'Create a product in the company catalog. Used during intake to register a new product before creating an order.',
     schema: {
-      company_id: z.string().describe('Company ID'),
       name: z.string().describe('Product name'),
       description: z.string().optional().describe('Detailed description'),
       category: z.string().optional().describe('Category (textil, electronica, etc)'),
@@ -25,10 +24,11 @@ export default [
       image_urls: z.array(z.string()).optional().describe('Product image URLs'),
       notes: z.string().optional().describe('Additional notes'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       const { data, error } = await db.from('products').insert({
-        company_id: args.company_id,
+        company_id,
         name: args.name,
         description: args.description,
         category: args.category,
@@ -57,14 +57,14 @@ export default [
     name: 'list_products',
     description: 'List products in the company catalog.',
     schema: {
-      company_id: z.string().describe('Company ID'),
       active_only: z.boolean().default(true).describe('Only active products'),
       search: z.string().optional().describe('Search by name or description'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       let query = db.from('products').select('*')
-        .eq('company_id', args.company_id)
+        .eq('company_id', company_id)
         .order('name')
 
       if (args.active_only) query = query.eq('active', true)

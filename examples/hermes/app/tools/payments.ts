@@ -16,7 +16,6 @@ export default [
     name: 'record_payment',
     description: 'Registra un pago vinculado a un pedido. Opcionalmente lo enlaza a un documento que lo justifica.',
     schema: {
-      company_id: z.string(),
       order_id: z.string(),
       type: z.enum(PAYMENT_TYPES),
       amount: z.number(),
@@ -29,10 +28,11 @@ export default [
       linked_document_id: z.string().optional(),
       notes: z.string().optional(),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
       const payee = args.payee ?? DEFAULT_PAYEE[args.type as PaymentType]
-      const { data, error } = await db.from('payments').insert({ ...args, payee }).select().single()
+      const { data, error } = await db.from('payments').insert({ ...args, company_id, payee }).select().single()
       if (error) return agentErr(`No se pudo registrar pago: ${error.message}`)
 
       const costingField = COSTING_MAP[args.type] || 'other'

@@ -1,16 +1,16 @@
 import { useState, useCallback, useRef, useMemo, type ReactNode } from 'react'
-import { useMountEffect } from '../hooks/useMountEffect'
+import { useMountEffect } from '../hooks/useMountEffect.js'
 import { ResponsiveGridLayout, type Layout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import { XIcon } from 'lucide-react'
-import { loadShellState, saveShellState, clearShellState } from './shell/persistence'
-import { Toolbar } from './shell/Toolbar'
-import { FocusView } from './shell/FocusView'
-import { EmptyState } from './shell/EmptyState'
-import type { ActiveEntity, WidgetInstance, WidgetType } from './shell/types'
-import type { ShellContext, WidgetRegistry } from '../lib/define-widget'
+import { loadShellState, saveShellState, clearShellState } from './shell/persistence.js'
+import { Toolbar } from './shell/Toolbar.js'
+import { FocusView } from './shell/FocusView.js'
+import { EmptyState } from './shell/EmptyState.js'
+import type { ActiveEntity, WidgetInstance, WidgetType } from './shell/types.js'
+import type { ShellContext, WidgetRegistry } from '../lib/define-widget.js'
 
-export type { WidgetType, ActiveEntity } from './shell/types'
+export type { WidgetType, ActiveEntity } from './shell/types.js'
 
 function useContainerWidth(ref: React.RefObject<HTMLDivElement | null>) {
   const [width, setWidth] = useState(800)

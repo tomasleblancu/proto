@@ -1,4 +1,4 @@
-import type { WidgetInstance } from './types'
+import type { WidgetInstance } from './types.js'
 
 const KEY = 'proto-shell'
 

@@ -1,6 +1,6 @@
 import { XIcon, SparklesIcon } from 'lucide-react'
-import { Generative } from '../widgets/agent/Generative'
-import type { WidgetInstance } from './types'
+import { Generative } from '../widgets/agent/Generative.js'
+import type { WidgetInstance } from './types.js'
 
 interface Props {
   spec: any

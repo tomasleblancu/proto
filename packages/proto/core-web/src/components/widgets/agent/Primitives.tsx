@@ -7,8 +7,8 @@
  */
 import { useState, type ReactNode } from 'react'
 import { ExternalLinkIcon, StarIcon, ShieldCheckIcon, Loader2Icon, CheckIcon } from 'lucide-react'
-import { Badge as UIBadge } from '../../ui/badge'
-import { ACTIONS } from './actions'
+import { Badge as UIBadge } from '../../ui/badge.js'
+import { ACTIONS } from './actions.js'
 
 type OnChat = (message: string) => void
 

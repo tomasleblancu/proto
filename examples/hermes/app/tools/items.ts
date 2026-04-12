@@ -8,7 +8,6 @@ export default [
     description: 'Crea un item dentro de un pedido. Inicia en sourcing.identify_need salvo que se especifique otra fase/step. IMPORTANTE: si el item corresponde a un producto del catalogo, pasa product_id — sin eso la UI del cockpit de producto no listara este pedido.',
     schema: {
       order_id: z.string(),
-      company_id: z.string(),
       description: z.string(),
       product_id: z.string().optional().describe('FK a products. REQUERIDO si el item viene del catalogo de productos'),
       supplier_id: z.string().describe('FK a suppliers. OBLIGATORIO — todo item debe tener proveedor asignado.'),
@@ -23,12 +22,13 @@ export default [
       current_phase: z.enum(PHASES).default('sourcing'),
       current_step: z.string().default('identify_need'),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       if (!isValidStep(args.current_phase as Phase, args.current_step)) {
         return err(`Step invalido para fase ${args.current_phase}`)
       }
       const db = getSupabase()
-      const { data, error } = await db.from('order_items').insert(args).select().single()
+      const { data, error } = await db.from('order_items').insert({ ...args, company_id }).select().single()
       return error ? err(error.message) : json(data)
     },
   }),

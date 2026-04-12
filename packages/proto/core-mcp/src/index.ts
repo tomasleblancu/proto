@@ -29,6 +29,7 @@ export {
   type ToolDefinition,
   type ToolHandler,
   type ToolResult,
+  type ToolContext,
 } from './define-tool.js'
 export { buildEntityTools, registerEntityTools } from './entity-tools.js'
 export { buildWorkflowTools, registerWorkflowTools } from './workflow-tools.js'

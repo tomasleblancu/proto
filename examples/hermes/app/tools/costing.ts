@@ -11,7 +11,6 @@ export default [
     name: 'upsert_costing',
     description: 'Crea o actualiza el costeo de un pedido. Por defecto es a nivel pedido (consolidado). Pasa item_id solo si necesitas costeo por item individual. Usa type "estimated" para el preliminar y "actual" para el real. Cada llamada hace merge.',
     schema: {
-      company_id: z.string(),
       order_id: z.string(),
       item_id: z.string().optional().describe('Omitir para costeo consolidado del pedido. Pasar solo para costeo por item individual.'),
       type: z.enum(['estimated', 'actual']),
@@ -20,9 +19,10 @@ export default [
       fx_rate: z.number().optional().describe('Tipo de cambio USD→CLP al momento del costeo'),
       notes: z.string().optional(),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
+      const company_id = ctx.company_id!
       const db = getSupabase()
-      const { company_id, order_id, item_id, type, breakdown, currency, fx_rate, notes } = args
+      const { order_id, item_id, type, breakdown, currency, fx_rate, notes } = args
 
       let query = db.from('costings').select('id, estimated, actual')
       if (item_id) {

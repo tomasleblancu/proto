@@ -18,13 +18,13 @@
  *   }
  */
 import { useState, useCallback, useRef, useMemo } from 'react'
-import Shell, { type CockpitDefinition } from './components/Shell'
-import { useAuth } from './hooks/useAuth'
-import { useTheme } from './hooks/useTheme'
-import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget'
-import { protoSocket } from './lib/api'
+import Shell, { type CockpitDefinition } from './components/Shell.js'
+import { useAuth } from './hooks/useAuth.js'
+import { useTheme } from './hooks/useTheme.js'
+import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget.js'
+import { protoSocket } from './lib/api.js'
 import type { EntityDefinition } from '../../core-shared/src/index.js'
-import type { ActiveEntity, WidgetInstance } from './components/shell/types'
+import type { ActiveEntity, WidgetInstance } from './components/shell/types.js'
 
 export interface ProtoAppProps {
   /** Widget definitions — the core of your app's UI. */
