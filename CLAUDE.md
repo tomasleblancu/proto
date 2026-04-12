@@ -1,6 +1,9 @@
 # Proto
 
-TypeScript monorepo framework for building AI-agent-driven apps. The developer defines **data models** (SQL), **tools** (what the agent can do), and **widgets** (what the user sees). The framework provides the chat interface, Shell dashboard, auth, WebSocket, MCP server, and Claude CLI integration.
+TypeScript framework for building AI-agent-driven apps. The developer defines **data models** (SQL), **tools** (what the agent can do), and **widgets** (what the user sees). The framework provides the chat interface, Shell dashboard, auth, WebSocket, MCP server, and Claude CLI integration.
+
+- **npm**: [`@tleblancureta/proto`](https://www.npmjs.com/package/@tleblancureta/proto)
+- **GitHub**: [tomasleblancu/proto](https://github.com/tomasleblancu/proto)
 
 ## Stack
 
@@ -54,9 +57,9 @@ proto/
 └── entrypoint.sh                       CLAUDE_SETUP_TOKEN auth
 ```
 
-## Imports
+## Package
 
-One package, three subpath exports:
+Published on npm as [`@tleblancureta/proto`](https://www.npmjs.com/package/@tleblancureta/proto). One package, three subpath exports:
 
 ```ts
 import { defineTool, getSupabase, err, json } from '@tleblancureta/proto/mcp'
@@ -195,13 +198,13 @@ User chats → gateway passes to Claude CLI → Claude calls MCP tools → tools
 
 ## Key APIs
 
-### proto/mcp
+### @tleblancureta/proto/mcp
 - `createProtoMcp({ name })` — auto-discovers tools/, entities/, workflows/, builds MCP server
 - `defineTool({ name, schema, handler })` — declarative tool
 - `getSupabase()` — service-role Supabase client
 - `ok(text)`, `json(obj)`, `err(msg)` — tool response helpers
 
-### proto/web
+### @tleblancureta/proto/web
 - `ProtoApp` — zero-config React app (Shell + auth + entity management)
 - `defineWidget({ type, title, category, render })` — declarative widget
 - `Shell` — lower-level component if ProtoApp is too opinionated
@@ -209,7 +212,7 @@ User chats → gateway passes to Claude CLI → Claude calls MCP tools → tools
 - `useAuth()` — Supabase auth hook
 - `supabase` — anon-key Supabase client (browser-side)
 
-### proto/shared
+### @tleblancureta/proto/shared
 - `defineEntity({ name, table, cockpit })` — activatable entity
 - `defineWorkflow({ name, entityTable, phases })` — state machine
 
