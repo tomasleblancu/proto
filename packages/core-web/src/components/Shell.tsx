@@ -98,28 +98,21 @@ export default function Shell({
     const id = `${type}-${Date.now()}`
     const def = widgetRegistry.get(type)
     const size = def?.defaultSize || { w: 3, h: 4, minW: 2, minH: 3 }
+    const widget: WidgetInstance = { id, type, title: def?.title || type }
 
-    setWidgets(prev => {
-      const next = [...prev, { id, type, title: def?.title || type }]
-      setLayouts((prevLayouts: any) => {
-        const nextLayouts = { ...prevLayouts, lg: [...(prevLayouts.lg || []), { i: id, x: 0, y: Infinity, ...size }] }
-        saveShellState(next, nextLayouts)
-        return nextLayouts
-      })
+    setWidgets(prev => [...prev, widget])
+    setLayouts((prev: any) => {
+      const next = { ...prev, lg: [...(prev.lg || []), { i: id, x: 0, y: Infinity, ...size }] }
       return next
     })
   }, [widgetRegistry])
 
   const removeWidget = useCallback((id: string) => {
-    setWidgets(prev => {
-      const next = prev.filter(w => w.id !== id)
-      setLayouts((prevLayouts: any) => {
-        const nextLayouts = { ...prevLayouts, lg: (prevLayouts.lg || []).filter((l: any) => l.i !== id) }
-        saveShellState(next, nextLayouts)
-        return nextLayouts
-      })
-      return next
-    })
+    setWidgets(prev => prev.filter(w => w.id !== id))
+    setLayouts((prev: any) => ({
+      ...prev,
+      lg: (prev.lg || []).filter((l: any) => l.i !== id),
+    }))
   }, [])
 
   const resetShell = useCallback(() => {
@@ -128,9 +121,24 @@ export default function Shell({
     setLayouts({ ...defaultLayouts })
   }, [defaultWidgets, defaultLayouts])
 
+  const widgetsRef = useRef(widgets)
+  widgetsRef.current = widgets
+  const layoutsRef = useRef(layouts)
+  layoutsRef.current = layouts
+
+  const persistState = useCallback(() => {
+    saveShellState(widgetsRef.current, layoutsRef.current)
+  }, [])
+
+  const prevWidgetCount = useRef(widgets.length)
+  if (widgets.length !== prevWidgetCount.current) {
+    prevWidgetCount.current = widgets.length
+    persistState()
+  }
+
   function onLayoutChange(_layout: any, allLayouts: any) {
     setLayouts(allLayouts)
-    saveShellState(widgets, allLayouts)
+    saveShellState(widgetsRef.current, allLayouts)
   }
 
   const triggerLocalRefresh = useCallback(() => setLocalRefresh(k => k + 1), [])
@@ -153,7 +161,9 @@ export default function Shell({
 
   function renderWidget(widget: WidgetInstance) {
     const def = widgetRegistry.get(widget.type)
-    if (!def) return null
+    if (!def) {
+      return <p className="text-xs text-muted-foreground p-2">Widget "{widget.type}" not found.</p>
+    }
     return def.render(widget, shellCtx)
   }
 

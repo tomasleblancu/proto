@@ -10,7 +10,9 @@ export function loadShellState(): { widgets: WidgetInstance[]; layouts: any } | 
 }
 
 export function saveShellState(widgets: WidgetInstance[], layouts: any) {
-  localStorage.setItem(KEY, JSON.stringify({ widgets, layouts }))
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ widgets, layouts }))
+  } catch {}
 }
 
 export function clearShellState() {

@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useCallback, type ReactNode } from 'react'
+import { useMountEffect } from '../../hooks/useMountEffect'
 import { Button } from '../ui/button'
 import { PlusIcon, RotateCcwIcon, SunIcon, MoonIcon, MonitorIcon, UserIcon, LogOutIcon, Building2Icon, ChevronDownIcon, CheckIcon, XIcon, HomeIcon, SettingsIcon, LayoutGridIcon } from 'lucide-react'
 import { useTheme, type Theme } from '../../hooks/useTheme'
@@ -40,9 +41,20 @@ export function Toolbar({
   role, companies, effectiveCompanyId, setCompanyId, onSignOut, userEmail,
   rightActions,
 }: Props) {
-  const [showCatalog, setShowCatalog] = useState(false)
-  const [showProfile, setShowProfile] = useState(false)
-  const [showCompany, setShowCompany] = useState(false)
+  type Dropdown = 'catalog' | 'profile' | 'company' | null
+  const [openDropdown, setOpenDropdown] = useState<Dropdown>(null)
+  const showCatalog = openDropdown === 'catalog'
+  const showProfile = openDropdown === 'profile'
+  const showCompany = openDropdown === 'company'
+  const toggleDropdown = (d: Dropdown) => setOpenDropdown(prev => prev === d ? null : d)
+
+  useMountEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenDropdown(null)
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  })
   const currentCompany = companies?.find(c => c.id === effectiveCompanyId)
 
   return (
@@ -61,8 +73,10 @@ export function Toolbar({
             {openEntities.map(e => {
               const isActive = !!(cockpitMode && activeEntity && activeEntity.type === e.type && activeEntity.id === e.id)
               return (
-                <div
+                <button
                   key={`${e.type}-${e.id}`}
+                  role="tab"
+                  aria-selected={isActive}
                   className={`group flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-md border text-[11px] cursor-pointer transition-colors shrink-0 max-w-[200px] ${
                     isActive
                       ? 'bg-primary/10 border-primary/40 text-foreground'
@@ -72,14 +86,17 @@ export function Toolbar({
                 >
                   <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-primary animate-pulse' : 'bg-muted-foreground/40'}`} />
                   <span className="truncate">{e.label}</span>
-                  <button
+                  <span
+                    role="button"
+                    tabIndex={0}
                     onClick={(ev) => { ev.stopPropagation(); onCloseTab?.(e) }}
-                    className="p-0.5 rounded-full text-muted-foreground/50 hover:text-foreground hover:bg-accent shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Cerrar tab"
+                    onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.stopPropagation(); onCloseTab?.(e) } }}
+                    className={`p-0.5 rounded-full hover:text-foreground hover:bg-accent shrink-0 transition-opacity ${isActive ? 'text-muted-foreground/60' : 'text-muted-foreground/50 opacity-0 group-hover:opacity-100'}`}
+                    aria-label={`Close ${e.label}`}
                   >
                     <XIcon className="w-3 h-3" />
-                  </button>
-                </div>
+                  </span>
+                </button>
               )
             })}
           </div>
@@ -108,7 +125,7 @@ export function Toolbar({
               variant="ghost"
               size="sm"
               className="h-7 text-xs gap-1.5 max-w-[180px]"
-              onClick={() => setShowCompany(!showCompany)}
+              onClick={() => toggleDropdown('company')}
             >
               <Building2Icon className="w-3 h-3 shrink-0" />
               <span className="truncate">{currentCompany?.name || 'Empresa'}</span>
@@ -116,7 +133,7 @@ export function Toolbar({
             </Button>
             {showCompany && (
               <>
-                <div className="fixed inset-0 z-20" onClick={() => setShowCompany(false)} />
+                <div className="fixed inset-0 z-20" onClick={() => setOpenDropdown(null)} />
                 <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg p-1 z-30 w-60 max-h-80 overflow-y-auto scrollbar-thin">
                   <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground/60">Empresas</div>
                   {companies.map(c => {
@@ -124,7 +141,7 @@ export function Toolbar({
                     return (
                       <button
                         key={c.id}
-                        onClick={() => { setCompanyId(c.id); setShowCompany(false) }}
+                        onClick={() => { setCompanyId(c.id); setOpenDropdown(null) }}
                         className={`w-full text-left px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2 ${active ? 'bg-accent/50' : ''}`}
                       >
                         <Building2Icon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
@@ -140,38 +157,41 @@ export function Toolbar({
         )}
         {rightActions}
         <div className="relative">
-          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowCatalog(!showCatalog)}>
+          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => toggleDropdown('catalog')}>
             <PlusIcon className="w-3 h-3" /> Agregar
           </Button>
           {showCatalog && (
+            <>
+            <div className="fixed inset-0 z-20" onClick={() => setOpenDropdown(null)} />
             <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg p-1 z-30 w-40">
               {widgetCatalog.map(w => (
                 <button
                   key={w.type}
-                  onClick={() => { onAddWidget(w.type); setShowCatalog(false) }}
+                  onClick={() => { onAddWidget(w.type); setOpenDropdown(null) }}
                   className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
                 >
                   <span>{w.icon}</span> {w.title}
                 </button>
               ))}
             </div>
+            </>
           )}
         </div>
         {onSignOut && (
           <div className="relative ml-1">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setShowProfile(!showProfile)} aria-label="Perfil">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => toggleDropdown('profile')} aria-label="Perfil">
               <UserIcon className="w-3.5 h-3.5" />
             </Button>
             {showProfile && (
               <>
-                <div className="fixed inset-0 z-20" onClick={() => setShowProfile(false)} />
+                <div className="fixed inset-0 z-20" onClick={() => setOpenDropdown(null)} />
                 <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg p-1 z-30 w-48">
                   {userEmail && (
                     <div className="px-3 py-1.5 text-[11px] text-muted-foreground truncate border-b border-border/50 mb-1">{userEmail}</div>
                   )}
                   {onOpenSettings && (
                     <button
-                      onClick={() => { setShowProfile(false); onOpenSettings() }}
+                      onClick={() => { setOpenDropdown(null); onOpenSettings() }}
                       className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
                     >
                       <SettingsIcon className="w-3.5 h-3.5" /> Configuracion
@@ -180,7 +200,7 @@ export function Toolbar({
                   <ThemeToggleRow />
                   <div className="border-t border-border/50 mt-1 pt-1">
                     <button
-                      onClick={() => { setShowProfile(false); onSignOut() }}
+                      onClick={() => { setOpenDropdown(null); onSignOut() }}
                       className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
                     >
                       <LogOutIcon className="w-3.5 h-3.5" /> Salir
