@@ -1,0 +1,82 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: H
+      - generic [ref=e7]: Hermes
+    - generic [ref=e8]:
+      - link "Producto" [ref=e9] [cursor=pointer]:
+        - /url: "#producto"
+      - link "Cómo funciona" [ref=e10] [cursor=pointer]:
+        - /url: "#como"
+      - link "Ingresar" [ref=e11] [cursor=pointer]:
+        - /url: /login
+  - generic [ref=e12]:
+    - generic [ref=e13]: Agente AI para importaciones
+    - heading "Importar desde China, sin la fricción." [level=1] [ref=e15]:
+      - text: Importar desde China,
+      - text: sin la fricción.
+    - paragraph [ref=e16]: "Hermes es un agente que gestiona tus pedidos end-to-end: sourcing, negociación, documentación, aduana y last-mile. Hecho para pymes chilenas."
+    - generic [ref=e17]:
+      - link "Empezar" [ref=e18] [cursor=pointer]:
+        - /url: /login
+        - text: Empezar
+        - img [ref=e19]
+      - link "Ver cómo funciona" [ref=e21] [cursor=pointer]:
+        - /url: "#como"
+  - generic [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: "01"
+      - generic [ref=e26]: State machine
+      - generic [ref=e27]: Cada item avanza por 13 fases auditables, del sourcing al closed.
+    - generic [ref=e28]:
+      - generic [ref=e29]: "02"
+      - generic [ref=e30]: Documentos
+      - generic [ref=e31]: BL, factura, packing list, DIN. Validación y trazabilidad automática.
+    - generic [ref=e32]:
+      - generic [ref=e33]: "03"
+      - generic [ref=e34]: Multi-proveedor
+      - generic [ref=e35]: Pedidos consolidados con items de distintos suppliers en un solo BL.
+    - generic [ref=e36]:
+      - generic [ref=e37]: "04"
+      - generic [ref=e38]: Gmail nativo
+      - generic [ref=e39]: Conecta tu Gmail. Hermes lee, busca y responde hilos con proveedores.
+    - generic [ref=e40]:
+      - generic [ref=e41]: "05"
+      - generic [ref=e42]: Gates humanos
+      - generic [ref=e43]: El agente nunca aprueba costos finales ni recepciones sin tu confirmación.
+    - generic [ref=e44]:
+      - generic [ref=e45]: "06"
+      - generic [ref=e46]: Chat + Cockpit
+      - generic [ref=e47]: Conversa en lenguaje natural. Widgets se montan solos según contexto.
+  - generic [ref=e49]:
+    - generic [ref=e50]:
+      - generic [ref=e51]: CÓMO FUNCIONA
+      - heading "Un flujo. Cero hojas de cálculo." [level=2] [ref=e52]
+    - generic [ref=e53]:
+      - generic [ref=e54]:
+        - generic [ref=e55]: "01"
+        - generic [ref=e56]:
+          - generic [ref=e57]: Conecta
+          - generic [ref=e58]: Gmail, proveedores, forwarder. Hermes indexa tu operación en minutos.
+      - generic [ref=e59]:
+        - generic [ref=e60]: "02"
+        - generic [ref=e61]:
+          - generic [ref=e62]: Conversa
+          - generic [ref=e63]: Pídele cotizar, negociar, armar el pedido. Te responde con acciones, no con resúmenes.
+      - generic [ref=e64]:
+        - generic [ref=e65]: "03"
+        - generic [ref=e66]:
+          - generic [ref=e67]: Supervisa
+          - generic [ref=e68]: Cada fase queda trazada. Tú apruebas los gates críticos. El resto, automático.
+  - generic [ref=e69]:
+    - heading "Tu próximo pedido, sin estrés." [level=2] [ref=e70]
+    - paragraph [ref=e71]: Hermes está en beta privada. Escríbenos para acceder.
+    - link "Solicitar acceso" [ref=e72] [cursor=pointer]:
+      - /url: /login
+      - text: Solicitar acceso
+      - img [ref=e73]
+  - contentinfo [ref=e75]:
+    - generic [ref=e76]:
+      - generic [ref=e77]: H
+      - generic [ref=e78]: Hermes · Santiago, Chile
+    - generic [ref=e79]: © 2026

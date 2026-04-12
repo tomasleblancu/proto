@@ -32,6 +32,7 @@ export {
 } from './define-tool.js'
 export { buildEntityTools, registerEntityTools } from './entity-tools.js'
 export { buildWorkflowTools, registerWorkflowTools } from './workflow-tools.js'
+export { createProtoMcp, type ProtoMcpOptions } from './app.js'
 
 // ── Server factory ──
 

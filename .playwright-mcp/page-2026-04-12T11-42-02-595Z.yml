@@ -1,0 +1,138 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: H
+      - generic [ref=e8]: Hermes
+    - generic [ref=e10]:
+      - generic [ref=e13]:
+        - generic [ref=e14]: H
+        - paragraph [ref=e15]: Como te puedo ayudar?
+        - generic [ref=e16]:
+          - button "Lista los pedidos activos" [ref=e17] [cursor=pointer]
+          - button "Crea un nuevo pedido de importacion" [ref=e18] [cursor=pointer]
+          - button "Revisa documentos pendientes" [ref=e19] [cursor=pointer]
+          - button "Muestra reglas de recompra" [ref=e20] [cursor=pointer]
+      - generic [ref=e22]:
+        - generic [ref=e207]:
+          - generic [ref=e209]:
+            - paragraph [ref=e210]: Conversacion asociada a este producto
+            - paragraph [ref=e211]: Disposable Bed Sheet - Grande
+          - button "Salir del contexto" [ref=e212] [cursor=pointer]:
+            - img [ref=e213]
+        - generic [ref=e24]:
+          - button [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+          - textbox "Escribe un mensaje..." [ref=e28]
+          - button [disabled]:
+            - img
+  - generic [ref=e30]:
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - button "Inicio" [ref=e33] [cursor=pointer]:
+          - img [ref=e34]
+        - tab "Disposable Bed Sheet - Grande Close Disposable Bed Sheet - Grande" [selected] [ref=e216] [cursor=pointer]:
+          - generic [ref=e218]: Disposable Bed Sheet - Grande
+          - button "Close Disposable Bed Sheet - Grande" [ref=e219]:
+            - img [ref=e220]
+      - generic [ref=e38]:
+        - button "Reset" [ref=e39] [cursor=pointer]:
+          - img [ref=e40]
+          - text: Reset
+        - button "Comercial Atal" [ref=e44] [cursor=pointer]:
+          - img [ref=e45]
+          - generic [ref=e49]: Comercial Atal
+          - img [ref=e50]
+        - button "Carro" [ref=e52] [cursor=pointer]:
+          - img [ref=e53]
+        - generic [ref=e57]:
+          - button "Agregar" [ref=e58] [cursor=pointer]:
+            - img [ref=e59]
+            - text: Agregar
+          - generic [ref=e192]:
+            - button "📦 Pedidos" [ref=e193] [cursor=pointer]:
+              - generic [ref=e194]: 📦
+              - text: Pedidos
+            - button "🏷 Productos" [ref=e195] [cursor=pointer]:
+              - generic [ref=e196]: 🏷
+              - text: Productos
+            - button "📄 Documentos" [ref=e197] [cursor=pointer]:
+              - generic [ref=e198]: 📄
+              - text: Documentos
+            - button "🔄 Recompras" [ref=e199] [cursor=pointer]:
+              - generic [ref=e200]: 🔄
+              - text: Recompras
+            - button "📊 Inventario" [ref=e201] [cursor=pointer]:
+              - generic [ref=e202]: 📊
+              - text: Inventario
+            - button "⏰ Tareas programadas" [ref=e203] [cursor=pointer]:
+              - generic [ref=e204]: ⏰
+              - text: Tareas programadas
+            - button "🤖 Agentes" [ref=e205] [cursor=pointer]:
+              - generic [ref=e206]: 🤖
+              - text: Agentes
+        - button "Perfil" [ref=e61] [cursor=pointer]:
+          - img [ref=e62]
+    - generic [ref=e223]:
+      - generic [ref=e224]:
+        - generic [ref=e226]: Producto
+        - generic [ref=e228]:
+          - button "Disposable Bed Sheet - Grande" [ref=e229] [cursor=pointer]:
+            - img "Disposable Bed Sheet - Grande"
+            - img [ref=e231]
+          - generic [ref=e235]:
+            - generic [ref=e236]:
+              - generic [ref=e237]:
+                - button "Disposable Bed Sheet - Grande" [ref=e238]:
+                  - generic [ref=e239]: Disposable Bed Sheet - Grande
+                  - img [ref=e240]
+                - generic [ref=e243]:
+                  - button "textil" [ref=e244]:
+                    - generic [ref=e246]: textil
+                    - img [ref=e247]
+                  - button "PP non-woven" [ref=e250]:
+                    - generic [ref=e252]: PP non-woven
+                    - img [ref=e253]
+                  - button "+ SKU" [ref=e256]:
+                    - generic [ref=e257]: + SKU
+                    - img [ref=e258]
+              - button "Eliminar producto" [ref=e261] [cursor=pointer]:
+                - img [ref=e262]
+            - separator [ref=e265]
+            - generic [ref=e266]:
+              - generic [ref=e267]: Origen
+              - button "CN" [ref=e268]:
+                - generic [ref=e269]: CN
+                - img [ref=e270]
+              - generic [ref=e273]: HS code
+              - button "4818900000" [ref=e274]:
+                - generic [ref=e275]: "4818900000"
+                - img [ref=e276]
+              - generic [ref=e279]: Dimensiones
+              - button "125cm x 225cm" [ref=e280]:
+                - generic [ref=e281]: 125cm x 225cm
+                - img [ref=e282]
+              - generic [ref=e285]: Peso
+              - button "—" [ref=e286]:
+                - generic [ref=e287]: —
+                - img [ref=e288]
+              - generic [ref=e291]:
+                - paragraph [ref=e292]: Descripcion
+                - button "Sabanilla desechable de un solo uso, talla grande. Non-woven, para spa." [ref=e293]:
+                  - generic [ref=e294]: Sabanilla desechable de un solo uso, talla grande. Non-woven, para spa.
+                  - img [ref=e295]
+      - generic [ref=e298]:
+        - generic [ref=e300]: Proveedores
+        - generic [ref=e305]:
+          - generic [ref=e306]: Nantong ChenhongTextile Co., Ltd.
+          - generic [ref=e307]: CN
+      - generic [ref=e308]:
+        - generic [ref=e310]: Pedidos del producto
+        - button "Xiaotu International Trade (Hubei) Co., Ltd Buscando 6,000 uds USD 3,511 4/10/2026" [ref=e313] [cursor=pointer]:
+          - generic [ref=e314]:
+            - generic [ref=e315]:
+              - generic [ref=e316]: Xiaotu International Trade (Hubei) Co., Ltd
+              - generic [ref=e317]: Buscando
+            - generic [ref=e318]:
+              - generic [ref=e319]: 6,000 uds
+              - generic [ref=e320]: USD 3,511
+              - generic [ref=e321]: 4/10/2026

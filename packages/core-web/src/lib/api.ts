@@ -23,6 +23,8 @@ class ProtoSocket {
   private connectPromise: Promise<void> | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private pingTimer: ReturnType<typeof setInterval> | null = null
+  private reconnectDelay = 3000
+  private static readonly MAX_RECONNECT_DELAY = 60000
 
   connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN && this.authenticated) {
@@ -46,6 +48,7 @@ class ProtoSocket {
           if (event.type === 'auth' && event.status === 'ok') {
             this.authenticated = true
             this.connectPromise = null
+            this.reconnectDelay = 3000 // reset on successful auth
             // Start keepalive ping every 25s to prevent idle disconnects
             if (this.pingTimer) clearInterval(this.pingTimer)
             this.pingTimer = setInterval(() => {
@@ -78,12 +81,13 @@ class ProtoSocket {
           try { this.messageHandler({ type: 'error', message: 'Conexion perdida. Reintenta.' }) } catch {}
           this.messageHandler = null
         }
-        // Auto-reconnect after 3s
+        // Auto-reconnect with exponential backoff (3s → 6s → 12s → ... → 60s max)
         if (!this.reconnectTimer) {
           this.reconnectTimer = setTimeout(() => {
             this.reconnectTimer = null
             this.connect().catch(() => {})
-          }, 3000)
+          }, this.reconnectDelay)
+          this.reconnectDelay = Math.min(this.reconnectDelay * 2, ProtoSocket.MAX_RECONNECT_DELAY)
         }
       }
 

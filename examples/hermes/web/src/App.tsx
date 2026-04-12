@@ -21,7 +21,6 @@ import CreateProductDialog from './widgets/modals/CreateProductDialog'
 import SettingsModal from './widgets/modals/SettingsModal'
 import Chat from './pages/Chat'
 import Login from './pages/Login'
-import Landing from './pages/Landing'
 import Onboarding from './pages/Onboarding'
 import GmailCallback from './pages/GmailCallback'
 import ResetPassword from './pages/ResetPassword'
@@ -264,8 +263,7 @@ export default function App() {
   }
 
   if (!user) {
-    if (window.location.pathname === '/login') return <Login />
-    return <Landing />
+    return <Login />
   }
 
   if (window.location.pathname === '/login') {

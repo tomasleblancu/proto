@@ -7,6 +7,7 @@
 
 // Framework components
 export { default as Shell, type CockpitDefinition } from './components/Shell'
+export { ProtoApp, type ProtoAppProps } from './ProtoApp'
 
 // Extension API
 export {
