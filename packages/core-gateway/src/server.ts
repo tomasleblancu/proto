@@ -9,6 +9,7 @@ import { registerUploadRoutes } from './routes/upload.js'
 import { registerGmailRoutes } from './routes/gmail.js'
 import { registerHealthRoutes } from './routes/health.js'
 import { registerCronRoutes } from './routes/cron.js'
+import { registerAdminRoutes } from './routes/admin.js'
 import { startMailIngester } from './mail-ingester.js'
 
 const app = new Hono()
@@ -27,6 +28,7 @@ registerUploadRoutes(app)
 registerGmailRoutes(app)
 registerHealthRoutes(app)
 registerCronRoutes(app)
+registerAdminRoutes(app)
 
 // --- Start ---
 console.log(`${config.display_name} Gateway starting on port ${PORT}`)

@@ -18,7 +18,9 @@
  *   }
  */
 import { useState, useCallback, useRef, useMemo } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Shell, { type CockpitDefinition } from './components/Shell.js'
+import { AdminPanel } from './components/admin/AdminPanel.js'
 import { useAuth } from './hooks/useAuth.js'
 import { useTheme } from './hooks/useTheme.js'
 import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget.js'
@@ -64,7 +66,7 @@ export function ProtoApp({
 }: ProtoAppProps) {
   useTheme()
 
-  const { user, companyId, companies, profile, loading, signOut, setCompanyId } = useAuth()
+  const { user, role, companyId, companies, profile, loading, signOut, setCompanyId } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
   const chatSendRef = useRef<((msg: string) => void) | null>(null)
 
@@ -140,24 +142,32 @@ export function ProtoApp({
   const effectiveCompanyId = companyId || user.id
 
   return (
-    <Shell
-      widgets={widgetRegistry}
-      defaultWidgets={defaultWidgets}
-      defaultLayouts={defaultLayouts}
-      cockpits={cockpits}
-      companyId={effectiveCompanyId}
-      refreshKey={refreshKey}
-      onSendToChat={onSendToChat}
-      activeEntity={activeEntity}
-      onActivateEntity={activateEntity}
-      onDeactivateEntity={() => setActiveEntity(null)}
-      openEntities={openEntities}
-      onCloseTab={closeEntityTab}
-      companies={companies}
-      effectiveCompanyId={effectiveCompanyId}
-      setCompanyId={setCompanyId}
-      onSignOut={signOut}
-      userEmail={profile?.full_name || user.email || ''}
-    />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/admin" element={<AdminPanel widgets={widgetRegistry} />} />
+        <Route path="*" element={
+          <Shell
+            widgets={widgetRegistry}
+            defaultWidgets={defaultWidgets}
+            defaultLayouts={defaultLayouts}
+            cockpits={cockpits}
+            companyId={effectiveCompanyId}
+            refreshKey={refreshKey}
+            onSendToChat={onSendToChat}
+            activeEntity={activeEntity}
+            onActivateEntity={activateEntity}
+            onDeactivateEntity={() => setActiveEntity(null)}
+            openEntities={openEntities}
+            onCloseTab={closeEntityTab}
+            role={role}
+            companies={companies}
+            effectiveCompanyId={effectiveCompanyId}
+            setCompanyId={setCompanyId}
+            onSignOut={signOut}
+            userEmail={profile?.full_name || user.email || ''}
+          />
+        } />
+      </Routes>
+    </BrowserRouter>
   )
 }

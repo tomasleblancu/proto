@@ -1,7 +1,8 @@
 import { useState, useCallback, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMountEffect } from '../../hooks/useMountEffect.js'
 import { Button } from '../ui/button.js'
-import { PlusIcon, RotateCcwIcon, SunIcon, MoonIcon, MonitorIcon, UserIcon, LogOutIcon, Building2Icon, ChevronDownIcon, CheckIcon, XIcon, HomeIcon, SettingsIcon, LayoutGridIcon } from 'lucide-react'
+import { PlusIcon, RotateCcwIcon, SunIcon, MoonIcon, MonitorIcon, UserIcon, LogOutIcon, Building2Icon, ChevronDownIcon, CheckIcon, XIcon, HomeIcon, SettingsIcon, LayoutGridIcon, ShieldIcon } from 'lucide-react'
 import { useTheme, type Theme } from '../../hooks/useTheme.js'
 import type { ActiveEntity, WidgetType } from './types.js'
 
@@ -55,6 +56,7 @@ export function Toolbar({
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   })
+  const navigate = useNavigate()
   const currentCompany = companies?.find(c => c.id === effectiveCompanyId)
 
   return (
@@ -195,6 +197,14 @@ export function Toolbar({
                       className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
                     >
                       <SettingsIcon className="w-3.5 h-3.5" /> Configuracion
+                    </button>
+                  )}
+                  {role === 'admin' && (
+                    <button
+                      onClick={() => { setOpenDropdown(null); navigate('/admin') }}
+                      className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
+                    >
+                      <ShieldIcon className="w-3.5 h-3.5" /> Admin
                     </button>
                   )}
                   <ThemeToggleRow />
