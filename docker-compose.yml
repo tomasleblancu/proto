@@ -1,8 +1,11 @@
 services:
   mcp:
-    build: .
-    container_name: hermes-mcp
-    command: ["npx", "tsx", "examples/hermes/app/mcp-http.ts"]
+    build:
+      context: .
+      args:
+        APP_NAME: ${APP_NAME:-minimal}
+    container_name: ${APP_NAME:-minimal}-mcp
+    command: ["npx", "tsx", "examples/${APP_NAME:-minimal}/app/mcp-http.ts"]
     ports:
       - "8093:8093"
     env_file:
@@ -17,18 +20,21 @@ services:
       retries: 3
 
   agent:
-    build: .
-    container_name: hermes
+    build:
+      context: .
+      args:
+        APP_NAME: ${APP_NAME:-minimal}
+    container_name: ${APP_NAME:-minimal}
     ports:
       - "8092:8092"
     volumes:
-      - hermes-data:/data
-      - ./examples/hermes:/app/examples/hermes:ro
+      - app-data:/data
     env_file:
       - .env.docker
     environment:
       - PORT=8092
-      - PROTO_APP_ROOT=/app/examples/hermes
+      - PROTO_APP_ROOT=/app/examples/${APP_NAME:-minimal}
+      - PROTO_APP_NAME=${APP_NAME:-minimal}
     depends_on:
       mcp:
         condition: service_healthy
@@ -40,4 +46,4 @@ services:
       retries: 3
 
 volumes:
-  hermes-data:
+  app-data:
