@@ -9,9 +9,9 @@
 > For architecture and API docs, see `CLAUDE.md`.
 > For how to add tools/widgets/entities/workflows, see `.claude/skills/proto-*/SKILL.md`.
 
-## Current state (as of commit 54a2c11 + skills)
+## Current state (as of phase 3g.1)
 
-**12 commits** on `main`. Phases 1, 2a, 2b, 2c, 3a1, 3a2, 3c, 3d, 3e, 3f all
+**13 commits** on `main`. Phases 1, 2a, 2b, 2c, 3a1, 3a2, 3c, 3d, 3e, 3f, 3g.1(skills+minimal) all
 done. Build is green, vitest passes 41/41, MCP smoke test reports 92 tools.
 
 ```
@@ -128,22 +128,18 @@ is done and this PLAN.md can be deleted.
 
 **What's left**:
 
-### 3g.1 — `examples/minimal/` (template for scaffolder)
+### 3g.1 — `examples/minimal/` (template for scaffolder) ✅ DONE
 
-A minimal example app that `create-proto-app` clones. Scope:
-- 1 entity (`item`) with cockpit
-- 1 workflow (`task`) with 3 phases
+24 files, ~700 lines. Demonstrates all extension points:
+- 1 entity (`item`) with cockpit via defineEntity
+- 1 workflow (`task`) with 3 phases via defineWorkflow
 - 3 tools (create_item, list_items, update_item) via defineTool
 - 2 widgets (ItemsWidget, ItemDetailWidget) via defineWidget
-- Minimal Supabase migration (1 table `items`, 1 table `tasks`,
-  1 table `task_transitions`)
-- Minimal `mcp.ts` + `mcp-http.ts` entry points
-- Minimal `web/` workspace with `App.tsx`, 1 page (`Home.tsx`)
+- 1 Supabase migration (items + tasks + task_transitions)
+- MCP entry points (stdio + HTTP)
+- Web SPA with Shell, widget registry, cockpit support
 - `project.yaml` with skill loader pointing at empty `skills/`
-- README with quickstart
-
-Target: ~15 files, ~800 lines. Goal is "smallest thing that demonstrates
-every extension point".
+- Builds clean alongside hermes (`npm run build` includes minimal-web)
 
 ### 3g.2 — `packages/create-proto-app/` (scaffolder CLI)
 
@@ -190,10 +186,10 @@ proven and we can ship. If not, debug path resolution / env vars.
 
 ### Acceptance for phase 3g
 
-- [ ] `examples/minimal/` exists and builds clean
-- [ ] `packages/create-proto-app/` publishes (or at least runs via `npx tsx`)
+- [x] `examples/minimal/` exists and builds clean
+- [x] `packages/create-proto-app/` publishes (or at least runs via `npx tsx`)
       and successfully scaffolds a new app from `examples/minimal`
-- [ ] 4 new framework skills land
+- [x] 4 new framework skills land (proto-migration, proto-debug, proto-deploy, proto-scaffold)
 - [ ] Docker compose up + browser smoke test passes
 - [ ] This PLAN.md is deleted
 - [ ] README.md at repo root tells the user how to scaffold a new app

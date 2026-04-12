@@ -1,0 +1,14 @@
+{
+  "name": "create-proto-app",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "create-proto-app": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

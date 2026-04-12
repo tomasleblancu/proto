@@ -10,16 +10,10 @@ Esta carpeta contiene **framework skills** para Claude Code: guías operativas q
 | [`proto-widget/`](./proto-widget/SKILL.md) | "agregá un widget para X", "mostrame Y en el shell", "el widget Z debería Q" |
 | [`proto-entity/`](./proto-entity/SKILL.md) | "agregá un entity para X", "quiero cockpit para Y", "el agente debería activar Z" |
 | [`proto-workflow/`](./proto-workflow/SKILL.md) | "agregá un workflow para X", "necesito state machine", "la fase Y debería tener step Z" |
-
-## Pendientes (coming with framework phases)
-
-| Skill | Requiere fase |
-|---|---|
-| `proto-migration` | — (documenta SQL migration conventions) |
-| `proto-channel` | — (futuro `defineChannel` para WhatsApp/Gmail/etc) |
-| `proto-scaffold` | 3g — `create-proto-app` |
-| `proto-debug` | — (troubleshooting: logs, sessions, auth, path resolution) |
-| `proto-deploy` | — (Docker compose, Railway, env vars) |
+| [`proto-migration/`](./proto-migration/SKILL.md) | "creá una tabla para X", "agregá RLS", "necesito un trigger" |
+| [`proto-debug/`](./proto-debug/SKILL.md) | "el tool no aparece", "error de PROTO_APP_ROOT", "el gateway no arranca" |
+| [`proto-deploy/`](./proto-deploy/SKILL.md) | "cómo deployeo", "configurar Docker", "env vars de producción" |
+| [`proto-scaffold/`](./proto-scaffold/SKILL.md) | "creá una app nueva", "scaffold un proyecto", "cómo arranco" |
 
 ## Formato
 
@@ -39,6 +33,6 @@ type: framework
 
 ## Distribution
 
-Estos skills los copiará `create-proto-app` (Phase 3g) en cada app nueva como starting point editable. Hasta entonces son solo para trabajar en el proto repo directamente.
+Estos skills los copiará `create-proto-app` en cada app nueva como starting point editable.
 
 Para más contexto: ver `CLAUDE.md` del root — sección "Framework skills".

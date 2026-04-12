@@ -1,0 +1,17 @@
+name: minimal
+display_name: Minimal
+timezone: UTC
+
+mcp:
+  servers:
+    minimal:
+      type: http
+      url: http://minimal-mcp:8093/mcp
+
+prompts:
+  default: app/prompts/default.md
+
+skills:
+  dir: app/skills
+
+always_allowed_tools: []
