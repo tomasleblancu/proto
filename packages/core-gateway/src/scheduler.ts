@@ -1,7 +1,8 @@
 import { Cron } from 'croner'
 import { getSupabase } from './supabase.js'
 import { runClaude } from './claude-runner.js'
-import { sendFromHermes } from './email-sender.js'
+import { sendSystemMail } from './email-sender.js'
+import { config } from './config.js'
 import type { TaskNotifyTrigger, TaskOutputChannel } from '@proto/core-shared'
 
 /**
@@ -249,8 +250,8 @@ async function maybeNotify(task: ScheduledTaskRow, ctx: NotifyCtx): Promise<void
   // Build the message
   const subject =
     ctx.status === 'error'
-      ? `[Hermes] Tarea "${task.name}" fallo`
-      : `[Hermes] ${task.name}`
+      ? `[${config.display_name}] Tarea "${task.name}" fallo`
+      : `[${config.display_name}] ${task.name}`
   const bodyLines: string[] = []
   bodyLines.push(`Tarea: ${task.name}`)
   if (task.description) bodyLines.push(`Descripcion: ${task.description}`)
@@ -266,11 +267,11 @@ async function maybeNotify(task: ScheduledTaskRow, ctx: NotifyCtx): Promise<void
   }
   bodyLines.push('')
   bodyLines.push('---')
-  bodyLines.push('Hermes · tarea programada')
+  bodyLines.push(`${config.display_name} · tarea programada`)
   const body = bodyLines.join('\n')
 
   if (task.output_channel === 'email') {
-    const result = await sendFromHermes({
+    const result = await sendSystemMail({
       companyId: task.company_id,
       to: task.output_recipient,
       subject,

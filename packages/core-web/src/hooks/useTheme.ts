@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react'
 export type Theme = 'light' | 'dark' | 'system'
 
 function getStoredTheme(): Theme {
-  return (localStorage.getItem('hermes-theme') as Theme) || 'dark'
+  return (localStorage.getItem('proto-theme') as Theme) || 'dark'
 }
 
 function applyTheme(theme: Theme) {
@@ -28,7 +28,7 @@ export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(getStoredTheme)
 
   const setTheme = useCallback((t: Theme) => {
-    localStorage.setItem('hermes-theme', t)
+    localStorage.setItem('proto-theme', t)
     setThemeState(t)
     applyTheme(t)
   }, [])

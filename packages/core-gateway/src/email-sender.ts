@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from 'nodemailer'
+import { config } from './config.js'
 import {
   createThread,
   findThreadByMessageId,
@@ -8,7 +9,7 @@ import {
 } from './mail-threads.js'
 
 /**
- * Hermes system mailer. Single SMTP identity used for all outbound
+ * System mailer. Single SMTP identity used for all outbound
  * notifications across all companies. Distinct from the user's personal
  * Gmail (which lives in gmail_tokens and is only used when the agent
  * reads/writes the user's own inbox as a tool).
@@ -24,10 +25,10 @@ let cachedReplyTo: string | null = null
 function getTransporter(): Transporter | null {
   if (transporter) return transporter
 
-  const host = process.env.HERMES_SMTP_HOST
-  const port = parseInt(process.env.HERMES_SMTP_PORT || '587', 10)
-  const user = process.env.HERMES_SMTP_USER
-  const pass = process.env.HERMES_SMTP_PASS
+  const host = process.env.MAIL_SMTP_HOST || process.env.HERMES_SMTP_HOST
+  const port = parseInt(process.env.MAIL_SMTP_PORT || process.env.HERMES_SMTP_PORT || '587', 10)
+  const user = process.env.MAIL_SMTP_USER || process.env.HERMES_SMTP_USER
+  const pass = process.env.MAIL_SMTP_PASS || process.env.HERMES_SMTP_PASS
 
   if (!host || !user || !pass) return null
 
@@ -38,8 +39,9 @@ function getTransporter(): Transporter | null {
     auth: { user, pass },
   })
 
-  cachedFrom = process.env.HERMES_SMTP_FROM || `Hermes <${user}>`
-  cachedReplyTo = process.env.HERMES_SMTP_REPLY_TO || cachedFrom
+  const fromEnv = process.env.MAIL_SMTP_FROM || process.env.HERMES_SMTP_FROM
+  cachedFrom = fromEnv || `${config.display_name} <${user}>`
+  cachedReplyTo = process.env.MAIL_SMTP_REPLY_TO || process.env.HERMES_SMTP_REPLY_TO || cachedFrom
 
   return transporter
 }
@@ -71,16 +73,16 @@ export interface SendOptions {
 }
 
 /**
- * Send mail from the Hermes system account and record it as an outbound
+ * Send mail from the system account and record it as an outbound
  * thread message. Returns the generated Message-ID + thread id for
  * downstream bookkeeping. Never throws.
  */
-export async function sendFromHermes(opts: SendOptions): Promise<SendResult> {
+export async function sendSystemMail(opts: SendOptions): Promise<SendResult> {
   const t = getTransporter()
   if (!t) {
     return {
       ok: false,
-      error: 'HERMES_SMTP_* env vars not configured. Set HERMES_SMTP_HOST, _USER, _PASS (and optionally _PORT, _FROM, _REPLY_TO).',
+      error: 'MAIL_SMTP_* env vars not configured. Set MAIL_SMTP_HOST, _USER, _PASS (and optionally _PORT, _FROM, _REPLY_TO).',
     }
   }
 
@@ -151,6 +153,11 @@ export async function sendFromHermes(opts: SendOptions): Promise<SendResult> {
   return { ok: true, messageId, threadId: thread.id }
 }
 
-export function isHermesMailConfigured(): boolean {
+export function isMailConfigured(): boolean {
   return getTransporter() !== null
 }
+
+/** @deprecated Use sendSystemMail instead. */
+export const sendFromHermes = sendSystemMail
+/** @deprecated Use isMailConfigured instead. */
+export const isHermesMailConfigured = isMailConfigured

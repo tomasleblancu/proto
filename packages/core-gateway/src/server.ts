@@ -33,5 +33,5 @@ console.log(`${config.display_name} Gateway starting on port ${PORT}`)
 const server = serve({ fetch: app.fetch, port: PORT })
 injectWebSocket(server)
 
-// Start the IMAP ingester (no-op if HERMES_IMAP_HOST not configured)
+// Start the IMAP ingester (no-op if MAIL_IMAP_HOST not configured)
 startMailIngester()

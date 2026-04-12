@@ -36,12 +36,12 @@ export interface MailMessage {
 }
 
 /**
- * RFC 5322 Message-ID generator. Format: <hermes-{uuid}@hermes>.
+ * RFC 5322 Message-ID generator. Format: <proto-{uuid}@{domain}>.
  * Must be stable and unique so both outbound (we set it) and inbound
  * dedup (we look it up) point at the same row.
  */
-export function generateMessageId(domain = 'hermes'): string {
-  return `<hermes-${randomUUID()}@${domain}>`
+export function generateMessageId(domain = 'proto'): string {
+  return `<proto-${randomUUID()}@${domain}>`
 }
 
 /**

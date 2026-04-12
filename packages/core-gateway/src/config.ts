@@ -61,9 +61,9 @@ function loadConfig(): ProjectConfig {
 
   if (!existsSync(resolved)) {
     return {
-      name: 'hermes',
-      display_name: 'Hermes',
-      timezone: 'America/Santiago',
+      name: 'proto',
+      display_name: 'Proto',
+      timezone: 'UTC',
       mcp_servers: {},
       prompts: { default: 'prompts/default.md' },
       skills_dir: 'skills',
@@ -97,9 +97,9 @@ function loadConfig(): ProjectConfig {
   }
 
   return {
-    name: raw.name || 'hermes',
-    display_name: raw.display_name || 'Hermes',
-    timezone: raw.timezone || 'America/Santiago',
+    name: raw.name || 'proto',
+    display_name: raw.display_name || 'Proto',
+    timezone: raw.timezone || 'UTC',
     mcp_servers,
     prompts: raw.prompts || { default: 'prompts/default.md' },
     skills_dir: skillsRaw.dir || 'skills',

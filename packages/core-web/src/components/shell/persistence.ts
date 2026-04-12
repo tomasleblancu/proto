@@ -1,6 +1,6 @@
 import type { WidgetInstance } from './types'
 
-const KEY = 'hermes-shell'
+const KEY = 'proto-shell'
 
 export function loadShellState(): { widgets: WidgetInstance[]; layouts: any } | null {
   try {

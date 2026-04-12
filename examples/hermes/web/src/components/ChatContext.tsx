@@ -2,13 +2,13 @@ import { Badge } from '@proto/core-web'
 import type { DragContext } from '@proto/core-web'
 import { PackageIcon, BoxIcon, UserIcon } from 'lucide-react'
 
-const ICONS = {
+const ICONS: Record<string, typeof PackageIcon> = {
   order: PackageIcon,
   product: BoxIcon,
   profile: UserIcon,
 }
 
-const TYPE_LABELS = {
+const TYPE_LABELS: Record<string, string> = {
   order: 'Pedido',
   product: 'Producto',
   profile: 'Perfil',

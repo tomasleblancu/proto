@@ -1,5 +1,5 @@
 export interface DragContext {
-  type: 'order' | 'product' | 'profile'
+  type: string
   id: string
   label: string
   meta?: string
@@ -11,19 +11,19 @@ export interface DragContext {
 }
 
 export function setDragData(e: React.DragEvent, ctx: DragContext) {
-  e.dataTransfer.setData('application/hermes', JSON.stringify(ctx))
+  e.dataTransfer.setData('application/proto', JSON.stringify(ctx))
   e.dataTransfer.effectAllowed = 'copy'
 }
 
 export function getDragData(e: React.DragEvent): DragContext | null {
   try {
-    const raw = e.dataTransfer.getData('application/hermes')
+    const raw = e.dataTransfer.getData('application/proto')
     return raw ? JSON.parse(raw) : null
   } catch { return null }
 }
 
 export function hasDragData(e: React.DragEvent): boolean {
-  return e.dataTransfer.types.includes('application/hermes')
+  return e.dataTransfer.types.includes('application/proto')
 }
 
 /**

@@ -15,7 +15,7 @@ export interface StreamEvent {
 
 type EventHandler = (event: StreamEvent) => void
 
-class HermesSocket {
+class ProtoSocket {
   private ws: WebSocket | null = null
   private authenticated = false
   private messageHandler: EventHandler | null = null
@@ -131,7 +131,10 @@ class HermesSocket {
 }
 
 // Singleton
-export const hermesSocket = new HermesSocket()
+export const protoSocket = new ProtoSocket()
+
+/** @deprecated Use protoSocket instead. */
+export const hermesSocket = protoSocket
 
 // Chat request params
 interface ChatParams {
@@ -144,10 +147,10 @@ interface ChatParams {
 }
 
 /**
- * Send a chat message via WebSocket. Events come through hermesSocket.onMessage().
+ * Send a chat message via WebSocket. Events come through protoSocket.onMessage().
  */
 export async function sendChatWs(params: ChatParams) {
-  await hermesSocket.send({ type: 'chat', channel: 'web', ...params })
+  await protoSocket.send({ type: 'chat', channel: 'web', ...params })
 }
 
 /**

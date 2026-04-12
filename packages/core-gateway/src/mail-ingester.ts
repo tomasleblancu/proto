@@ -1,7 +1,7 @@
 import { ImapFlow } from 'imapflow'
 import { simpleParser, type ParsedMail } from 'mailparser'
 import { runClaude } from './claude-runner.js'
-import { sendFromHermes } from './email-sender.js'
+import { sendSystemMail } from './email-sender.js'
 import {
   createThread,
   findThreadByMessageId,
@@ -14,7 +14,7 @@ import {
 import { resolveCompanyByEmail } from './mail-router.js'
 
 /**
- * IMAP poller that turns the Hermes system mailbox into a chat input
+ * IMAP poller that turns the system mailbox into a chat input
  * channel. Every ~30s it:
  *
  *   1. Connects to the configured IMAP account
@@ -27,13 +27,13 @@ import { resolveCompanyByEmail } from './mail-router.js'
  *      e. Builds a prompt with prior thread history + the new message
  *      f. Calls runClaude with the thread's session_key (Claude CLI
  *         --resume gives automatic continuity)
- *      g. Replies via sendFromHermes with proper threading headers
+ *      g. Replies via sendSystemMail with proper threading headers
  *      h. Marks the IMAP message as SEEN
  *
  * Non-allowlisted senders, bounces, auto-replies, and duplicates are
  * silently skipped (logged but not errored).
  *
- * Runs only when HERMES_IMAP_HOST is set — otherwise the module is a no-op.
+ * Runs only when MAIL_IMAP_HOST (or HERMES_IMAP_HOST) is set — otherwise the module is a no-op.
  */
 
 interface IngesterConfig {
@@ -46,14 +46,13 @@ interface IngesterConfig {
 }
 
 function loadConfig(): IngesterConfig | null {
-  const host = process.env.HERMES_IMAP_HOST
+  const host = process.env.MAIL_IMAP_HOST || process.env.HERMES_IMAP_HOST
   if (!host) return null
-  const port = parseInt(process.env.HERMES_IMAP_PORT || '993', 10)
-  // Reuse SMTP credentials by default (same mailbox)
-  const user = process.env.HERMES_IMAP_USER || process.env.HERMES_SMTP_USER
-  const pass = process.env.HERMES_IMAP_PASS || process.env.HERMES_SMTP_PASS
+  const port = parseInt(process.env.MAIL_IMAP_PORT || process.env.HERMES_IMAP_PORT || '993', 10)
+  const user = process.env.MAIL_IMAP_USER || process.env.HERMES_IMAP_USER || process.env.MAIL_SMTP_USER || process.env.HERMES_SMTP_USER
+  const pass = process.env.MAIL_IMAP_PASS || process.env.HERMES_IMAP_PASS || process.env.MAIL_SMTP_PASS || process.env.HERMES_SMTP_PASS
   if (!user || !pass) {
-    console.warn('[mail-ingester] HERMES_IMAP_HOST set but IMAP/SMTP credentials missing')
+    console.warn('[mail-ingester] MAIL_IMAP_HOST set but IMAP/SMTP credentials missing')
     return null
   }
   return {
@@ -62,7 +61,7 @@ function loadConfig(): IngesterConfig | null {
     secure: port === 993,
     user,
     pass,
-    pollIntervalMs: parseInt(process.env.HERMES_IMAP_POLL_MS || '30000', 10),
+    pollIntervalMs: parseInt(process.env.MAIL_IMAP_POLL_MS || process.env.HERMES_IMAP_POLL_MS || '30000', 10),
   }
 }
 
@@ -72,7 +71,7 @@ let timer: NodeJS.Timeout | null = null
 export function startMailIngester(): void {
   const config = loadConfig()
   if (!config) {
-    console.log('[mail-ingester] disabled (no HERMES_IMAP_HOST configured)')
+    console.log('[mail-ingester] disabled (no MAIL_IMAP_HOST configured)')
     return
   }
   if (running) return
@@ -214,7 +213,7 @@ async function processInboundMail(parsed: ParsedMail): Promise<boolean> {
     messageId,
     inReplyTo: inReplyTo || null,
     fromAddress: fromAddr,
-    toAddress: toAddr || 'hermes',
+    toAddress: toAddr || 'system',
     subject,
     body,
   })
@@ -246,11 +245,11 @@ async function processInboundMail(parsed: ParsedMail): Promise<boolean> {
     agentResponse = result.response || '(sin respuesta)'
   } catch (err: any) {
     console.error('[mail-ingester] runClaude failed:', err?.message || err)
-    agentResponse = `(Hermes no pudo procesar tu mensaje: ${err?.message || 'error interno'})`
+    agentResponse = `(No se pudo procesar tu mensaje: ${err?.message || 'error interno'})`
   }
 
   // Reply via outbound
-  const sendResult = await sendFromHermes({
+  const sendResult = await sendSystemMail({
     companyId: route.companyId,
     to: fromAddr,
     subject: normalizeSubject(subject) || subject,
@@ -267,11 +266,17 @@ async function processInboundMail(parsed: ParsedMail): Promise<boolean> {
   return true
 }
 
-const ALL_SKILLS = [
-  'hermes-company', 'hermes-products', 'hermes-intake', 'hermes-orders',
-  'hermes-documents', 'hermes-reorders', 'hermes-customs-cl', 'hermes-inventory',
-  'hermes-gmail', 'hermes-sourcing', 'hermes-ui', 'hermes-scheduling',
-]
+import { loadSkills } from './registry.js'
+
+function getAllSkillNames(): string[] {
+  try {
+    return loadSkills().map(s => s.name)
+  } catch {
+    return []
+  }
+}
+
+const ALL_SKILLS = getAllSkillNames()
 
 function firstHeader(value: unknown): string | null {
   if (!value) return null
@@ -322,7 +327,7 @@ function buildAgentPrompt(opts: PromptBuildOpts): string {
   if (prevMessages.length > 0) {
     parts.push('--- Historial del thread ---')
     for (const m of prevMessages) {
-      const who = m.direction === 'out' ? 'Hermes' : m.from_address
+      const who = m.direction === 'out' ? 'Assistant' : m.from_address
       parts.push(`[${who}]`)
       parts.push(m.body || '')
       parts.push('')
@@ -335,7 +340,7 @@ function buildAgentPrompt(opts: PromptBuildOpts): string {
   parts.push(opts.newBody)
   parts.push('--- Fin del mensaje ---')
   parts.push('')
-  parts.push(`Responde al usuario. Tu respuesta sera enviada como reply al thread. No incluyas headers, From/To, ni firmas tipo "Atte, Hermes" — el sistema las agrega. Escribi solo el cuerpo de la respuesta, en texto plano, tono directo y util. Usa las tools MCP que necesites (consultar pedidos, documentos, programar tareas, etc).`)
+  parts.push(`Responde al usuario. Tu respuesta sera enviada como reply al thread. No incluyas headers, From/To, ni firmas — el sistema las agrega. Escribi solo el cuerpo de la respuesta, en texto plano, tono directo y util. Usa las tools MCP que necesites.`)
 
   return parts.join('\n')
 }
