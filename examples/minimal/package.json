@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "concurrently -n gw,mcp,web -c blue,green,yellow \"tsx watch app/gateway.ts\" \"tsx watch app/mcp-http.ts\" \"cd web && npm run dev\"",
     "mcp": "tsx app/mcp.ts",
     "mcp:http": "tsx app/mcp-http.ts",
     "gateway": "tsx app/gateway.ts",
@@ -16,6 +17,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }
