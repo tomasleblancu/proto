@@ -190,9 +190,9 @@ proven and we can ship. If not, debug path resolution / env vars.
 - [x] `packages/create-proto-app/` publishes (or at least runs via `npx tsx`)
       and successfully scaffolds a new app from `examples/minimal`
 - [x] 4 new framework skills land (proto-migration, proto-debug, proto-deploy, proto-scaffold)
-- [ ] Docker compose up + browser smoke test passes
-- [ ] This PLAN.md is deleted
-- [ ] README.md at repo root tells the user how to scaffold a new app
+- [ ] Docker compose up + browser smoke test passes (manual — needs .env.docker with Supabase + Anthropic creds)
+- [x] README.md at repo root tells the user how to scaffold a new app
+- [ ] This PLAN.md is deleted (delete after Docker smoke test passes)
 
 ---
 

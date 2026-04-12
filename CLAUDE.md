@@ -1,6 +1,6 @@
 # Proto
 
-TypeScript monorepo framework for building AI-agent-driven apps. Provides a gateway (wraps Claude Code CLI), MCP tool server, React shell with widget registry, and Supabase integration. Apps extend via declarative APIs: `defineTool`, `defineWidget`, and (coming) `defineEntity`, `defineWorkflow`.
+TypeScript monorepo framework for building AI-agent-driven apps. Provides a gateway (wraps Claude Code CLI), MCP tool server, React shell with widget registry, and Supabase integration. Apps extend via declarative APIs: `defineTool`, `defineWidget`, `defineEntity`, `defineWorkflow`.
 
 **Hermes** — the original app this was extracted from — lives at `examples/hermes/` as the reference consumer and is still under active development.
 
@@ -11,10 +11,12 @@ proto/
 ├── packages/                   Framework libraries
 │   ├── core-gateway/           Hono HTTP+WS, Claude CLI runner, scheduler, mail
 │   ├── core-mcp/               MCP server factory, defineTool, helpers, UI tools
-│   ├── core-shared/            Framework types (ChatRequest, SSEEvent, scheduling)
-│   └── core-web/               React shell, defineWidget, hooks, agent primitives
+│   ├── core-shared/            Framework types, defineEntity, defineWorkflow
+│   ├── core-web/               React shell, defineWidget, hooks, agent primitives
+│   └── create-proto-app/       CLI scaffolder (npx create-proto-app <name>)
 ├── examples/
-│   └── hermes/                 Reference app (@proto-app/hermes workspace)
+│   ├── hermes/                 Reference app (@proto-app/hermes workspace)
+│   └── minimal/                Template app for scaffolder
 │       ├── app/
 │       │   ├── mcp.ts          stdio entry point
 │       │   ├── mcp-http.ts     HTTP entry point (runs in Docker)
@@ -219,9 +221,59 @@ Shell builds `shellCtx` once per render via `useMemo` and loops: `WIDGET_REGISTR
 
 **Adding a new widget**: see `.claude/skills/proto-widget/SKILL.md`.
 
-### Future: defineEntity, defineWorkflow, defineChannel
+### defineEntity (activatable entities)
 
-Phase 3e–3f will add these. `defineEntity` collapses the `activate_X` / cockpit layout / snapshot builder triad into a single declaration. `defineWorkflow` generates state machine tools from a YAML declaration. Not yet implemented.
+```ts
+// examples/hermes/app/entities/order.ts
+import { defineEntity } from '@proto/core-shared'
+
+export default defineEntity({
+  name: 'order',
+  displayName: 'pedido',
+  table: 'orders',
+  labelField: 'supplier_name',
+  cockpit: {
+    widgets: [
+      { id: 'cockpit-header', type: 'order-header', title: 'Pedido' },
+      // ...
+    ],
+    layouts: { lg: [...], md: [...], sm: [...] },
+  },
+  snapshotBuilder: async (entity, { supabase }) => {
+    // return markdown string for agent context
+  },
+})
+```
+
+`registerEntityTools(server, ENTITIES)` auto-generates `activate_<name>`, `deactivate_<name>`, `get_active_<name>` MCP tools. The Shell uses cockpit layouts when an entity is active.
+
+**Adding a new entity**: see `.claude/skills/proto-entity/SKILL.md`.
+
+### defineWorkflow (state machines)
+
+```ts
+// examples/hermes/app/workflows/import.ts
+import { defineWorkflow } from '@proto/core-shared'
+
+export default defineWorkflow({
+  name: 'import',
+  entityTable: 'order_items',
+  transitionsTable: 'phase_transitions',
+  phases: [
+    { name: 'sourcing', label: 'Sourcing', steps: ['identify_need', 'search_suppliers', 'shortlist'] },
+    { name: 'final_costing', steps: ['compute_final_landed', { name: 'awaiting_client_approval', requires_human_approval: true }, 'approved'] },
+    // ...
+  ],
+})
+```
+
+`registerWorkflowTools(server, workflow)` auto-generates 9 MCP tools: `get_item_state`, `list_items_by_phase`, `advance_step`, `block_item`, `unblock_item`, `hold_item`, `resume_item`, `cancel_item`, `request_human_approval`.
+
+**Adding a new workflow**: see `.claude/skills/proto-workflow/SKILL.md`.
+
+### Future: defineChannel
+
+Will parametrize WhatsApp/Gmail/mail integrations. Not yet implemented.
 
 ## Rules
 
@@ -314,8 +366,9 @@ Railway deploya via `Dockerfile` (healthcheck `/health`, config en `railway.toml
 ```bash
 npm test                # Vitest (root vitest.config.ts)
 npm run dev:gateway     # PROTO_APP_ROOT=examples/hermes + tsx watch
-npm run dev:web         # Vite http://localhost:3001
-npm run build           # core-shared → core-mcp → core-gateway → core-web
+npm run dev:web         # Vite http://localhost:3001 (hermes)
+npm run dev:minimal-web # Vite http://localhost:3002 (minimal template)
+npm run build           # core-shared → core-mcp → core-gateway → core-web → hermes-web → minimal-web
 cd examples/hermes && supabase db push    # aplicar migraciones
 ```
 
@@ -346,9 +399,9 @@ El repo está en medio de una migración desde la forma monolítica "hermes-el-p
 | 3a2 | ✅ | Batch migrate 89 tools al nuevo shape |
 | 3c | ✅ | `defineWidget` API + widget registry, Shell refactor |
 | **3d** | ⏳ | **Split core-web** en library + `examples/hermes/web/`. Mueve widgets, pages, App.tsx, main.tsx, orderSnapshot, Costing widget. Desbloquea mover `phases.ts` y `costing.ts` fuera de core-shared. |
-| 3e | ⏳ | `defineEntity` API — colapsa active-order tool + cockpit layouts + snapshot builder en una sola declaración |
-| 3f | ⏳ | `defineWorkflow` / `phases.yaml` — state machine parametrizable |
-| 3g | ⏳ | `create-proto-app` scaffolder + más framework skills |
+| 3e | ✅ | `defineEntity` API — colapsa active-order tool + cockpit layouts + snapshot builder en una sola declaración |
+| 3f | ✅ | `defineWorkflow` — state machine parametrizable con tools auto-generados |
+| 3g | ✅ | `create-proto-app` scaffolder, `examples/minimal/` template, 8 framework skills |
 
 **Historia Git**:
 ```
@@ -362,10 +415,7 @@ ae8018b phase 2b: carve out MCP tools to examples/hermes/app/
 630c459 baseline: copy of hermes as starting point for proto framework
 ```
 
-**Known blockers** (resolverán en Phase 3d):
-- `packages/core-shared/src/phases.ts` aún importado por `core-web/src/lib/orderSnapshot.ts`
-- `packages/core-shared/src/costing.ts` aún importado por `core-web/src/components/widgets/cockpit/order/Costing.tsx`
-- `packages/core-web/` aún tiene widgets + pages Hermes-específicos
+**Resolved in 3d**: `phases.ts` and `costing.ts` moved to `examples/hermes/app/shared/`. Core-web is now split into library (`packages/core-web/`) + app (`examples/hermes/web/`).
 
 ## Framework skills (para Claude Code local)
 
@@ -373,6 +423,11 @@ Viven en `.claude/skills/proto-*/SKILL.md`. Cargan cuando Claude Code CLI trabaj
 
 - `proto-tool` — cómo agregar un MCP tool nuevo via `defineTool`
 - `proto-widget` — cómo agregar un widget al Shell via `defineWidget`
-- (coming) `proto-entity`, `proto-workflow`, `proto-migration`, `proto-scaffold`, `proto-debug`, `proto-deploy`
+- `proto-entity` — cómo agregar un entity activable via `defineEntity`
+- `proto-workflow` — cómo agregar un workflow (state machine) via `defineWorkflow`
+- `proto-migration` — convenciones SQL, RLS, triggers, pg_cron
+- `proto-scaffold` — cómo crear una app nueva con `create-proto-app`
+- `proto-debug` — troubleshooting: path resolution, MCP, sessions, auth
+- `proto-deploy` — Docker Compose, Railway, env vars, health checks
 
 Cuando `create-proto-app` scaffolder exista (Phase 3g), copiará estos skills al repo nuevo de cada app como starting point editable.
