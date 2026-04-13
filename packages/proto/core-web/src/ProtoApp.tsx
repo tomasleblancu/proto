@@ -38,6 +38,7 @@ export interface CompanyContextInput {
   companyId: string
   companies: { id: string; name: string }[]
   profile: { full_name: string | null; role_title: string | null; onboarding_completed: boolean } | null
+  activeEntity?: { type: string; id: string; label: string } | null
 }
 
 export interface ProtoAppProps {
@@ -66,7 +67,7 @@ export interface ProtoAppProps {
   buildCompanyContext?: (input: CompanyContextInput) => string
 }
 
-function defaultBuildCompanyContext({ companyId, companies, profile, role }: CompanyContextInput): string {
+function defaultBuildCompanyContext({ companyId, companies, profile, role, activeEntity }: CompanyContextInput): string {
   const company = companies.find(c => c.id === companyId)
   const lines: string[] = []
   if (company) lines.push(`Empresa: ${company.name}`)
@@ -75,6 +76,9 @@ function defaultBuildCompanyContext({ companyId, companies, profile, role }: Com
   if (role) lines.push(`Rol: ${role}`)
   if (profile && 'onboarding_completed' in profile) {
     lines.push(`Onboarding: ${profile.onboarding_completed ? 'completado' : 'pendiente'}`)
+  }
+  if (activeEntity) {
+    lines.push(`Entidad activa: ${activeEntity.type} "${activeEntity.label}" (id: ${activeEntity.id})`)
   }
   return lines.length > 0 ? lines.join('\n') : 'Sin empresa configurada'
 }
@@ -158,8 +162,9 @@ export function ProtoApp({
       companyId: effectiveCompanyId,
       companies,
       profile,
+      activeEntity,
     })
-  }, [user?.id, user?.email, role, effectiveCompanyId, companies, profile, buildCompanyContext])
+  }, [user?.id, user?.email, role, effectiveCompanyId, companies, profile, activeEntity, buildCompanyContext])
 
   // WebSocket setup — connect once when user is authenticated
   useEffect(() => {
