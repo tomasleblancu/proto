@@ -9,7 +9,7 @@
     "mcp:http": "tsx --env-file=.env app/mcp-http.ts",
     "gateway": "tsx --env-file=.env app/gateway.ts",
     "dev:gateway": "tsx watch --env-file=.env app/gateway.ts",
-    "postinstall": "proto-sync-skills"
+    "postinstall": "proto-sync"
   },
   "dependencies": {
     "@tleblancureta/proto": "^0.6.0",

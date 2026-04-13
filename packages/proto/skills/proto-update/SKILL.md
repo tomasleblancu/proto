@@ -27,7 +27,7 @@ cd web && npm install @tleblancureta/proto@latest && cd ..
 
 4. Re-sync Claude Code skills and base migrations:
 ```bash
-npx proto-sync-skills
+npx proto-sync
 ```
 This also checks if base framework migrations (e.g. `scheduled_tasks`) are missing from `supabase/migrations/` and copies them with a fresh timestamp if needed. If new migrations were added, remind the user to run `supabase db push`.
 
@@ -41,5 +41,5 @@ This also checks if base framework migrations (e.g. `scheduled_tasks`) are missi
 
 ## Troubleshooting
 
-- If `proto-sync-skills` is not found, the installed version is < 0.7.0. Update first, then sync.
-- If `postinstall` fails in Docker builds, add `--ignore-scripts` to npm install and run `npx proto-sync-skills` separately.
+- If `proto-sync` is not found, the installed version is < 0.7.0. Update first, then sync.
+- If `postinstall` fails in Docker builds, add `--ignore-scripts` to npm install and run `npx proto-sync` separately.
