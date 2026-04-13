@@ -136,6 +136,10 @@ export async function createProtoMcp(opts: ProtoMcpOptions) {
   // Resolve paths relative to cwd (app root)
   const appDir = process.cwd()
 
+  // Auto-load .env from app root if it exists (matches gateway behavior).
+  // Does not overwrite vars already in the environment.
+  try { process.loadEnvFile(resolve(appDir, '.env')) } catch {}
+
   const toolsDir = opts.toolsDir
     ? resolve(appDir, opts.toolsDir)
     : resolve(appDir, 'app', 'tools')
