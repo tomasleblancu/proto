@@ -63,3 +63,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Shell canvas grid background — communicates drag-droppable area */
+.dotted-bg {
+  background-image: radial-gradient(
+    circle,
+    hsl(var(--border) / 0.4) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+.dark .dotted-bg {
+  background-image: radial-gradient(
+    circle,
+    hsl(var(--border) / 0.3) 1px,
+    transparent 1px
+  );
+}

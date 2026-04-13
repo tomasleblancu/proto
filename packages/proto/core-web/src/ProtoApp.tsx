@@ -22,6 +22,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Shell, { type CockpitDefinition } from './components/Shell.js'
 import { AdminPanel } from './components/admin/AdminPanel.js'
 import { LoginForm } from './components/LoginForm.js'
+import { ResizableLayout } from './components/ResizableLayout.js'
 import { useAuth } from './hooks/useAuth.js'
 import { useTheme } from './hooks/useTheme.js'
 import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget.js'
@@ -153,19 +154,19 @@ export function ProtoApp({
         <Routes>
           <Route path="/admin" element={<AdminPanel widgets={widgetRegistry} />} />
           <Route path="*" element={
-            <div className="flex h-screen overflow-hidden">
-              {/* Chat — left panel */}
-              <div className="w-[380px] min-w-[300px] max-w-[500px] border-r border-border flex flex-col bg-background">
+            <ResizableLayout
+              chatPanel={
                 <ChatPanel
                   companyId={effectiveCompanyId}
                   userId={user.email || user.id}
                   appName={appName}
                   onStreamComplete={() => setRefreshKey(k => k + 1)}
                   onRegisterSend={(fn) => { chatSendRef.current = fn }}
+                  activeEntity={activeEntity}
+                  onClearEntity={() => setActiveEntity(null)}
                 />
-              </div>
-              {/* Shell — right canvas */}
-              <div className="flex-1 min-w-0">
+              }
+              shellPanel={
                 <Shell
                   widgets={widgetRegistry}
                   defaultWidgets={defaultWidgets}
@@ -186,8 +187,8 @@ export function ProtoApp({
                   onSignOut={signOut}
                   userEmail={profile?.full_name || user.email || ''}
                 />
-              </div>
-            </div>
+              }
+            />
           } />
         </Routes>
       </BrowserRouter>
