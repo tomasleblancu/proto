@@ -82,7 +82,20 @@ function loadConfig(): ProjectConfig {
 
   for (const [name, cfg] of Object.entries(mcpRaw) as [string, any][]) {
     if (cfg.type === 'http') {
-      mcp_servers[name] = { type: 'http', url: cfg.url }
+      // In local dev, Docker hostnames (e.g. myapp-mcp:8093) are unreachable.
+      // Rewrite to localhost if the host isn't localhost/127.0.0.1 and isn't a FQDN.
+      let url = cfg.url as string
+      try {
+        const parsed = new URL(url)
+        const host = parsed.hostname
+        const isLocalhost = host === 'localhost' || host === '127.0.0.1'
+        const isFqdn = host.includes('.')
+        if (!isLocalhost && !isFqdn) {
+          parsed.hostname = 'localhost'
+          url = parsed.toString().replace(/\/$/, '')
+        }
+      } catch {}
+      mcp_servers[name] = { type: 'http', url }
     } else {
       mcp_servers[name] = {
         type: 'stdio',
