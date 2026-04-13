@@ -148,6 +148,19 @@ export function ProtoApp({
     })
   }, [])
 
+  const effectiveCompanyId = companyId || user?.id || ''
+
+  const companyContext = useMemo(() => {
+    if (!user) return ''
+    return buildCompanyContext({
+      user: { id: user.id, email: user.email },
+      role,
+      companyId: effectiveCompanyId,
+      companies,
+      profile,
+    })
+  }, [user?.id, user?.email, role, effectiveCompanyId, companies, profile, buildCompanyContext])
+
   // WebSocket setup — connect once when user is authenticated
   useEffect(() => {
     if (!user) return
@@ -173,16 +186,6 @@ export function ProtoApp({
       </>
     )
   }
-
-  const effectiveCompanyId = companyId || user.id
-
-  const companyContext = useMemo(() => buildCompanyContext({
-    user: { id: user.id, email: user.email },
-    role,
-    companyId: effectiveCompanyId,
-    companies,
-    profile,
-  }), [user.id, user.email, role, effectiveCompanyId, companies, profile, buildCompanyContext])
 
   return (
     <>
