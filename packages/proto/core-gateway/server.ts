@@ -76,15 +76,19 @@ export async function createProtoGateway(opts?: GatewayOptions) {
   startWhatsAppChannel()
 
   // Internal cron tick — scans scheduled_tasks every minute and dispatches due ones
-  const cronTick = new Cron('* * * * *', async () => {
-    try {
-      const { dispatched } = await tick()
-      if (dispatched > 0) console.log(`[scheduler] dispatched ${dispatched} tasks`)
-    } catch (err) {
-      console.error('[scheduler] tick error', err)
-    }
-  })
-  console.log(`${config.display_name} Scheduler tick active (every 1m)`)
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const cronTick = new Cron('* * * * *', async () => {
+      try {
+        const { dispatched } = await tick()
+        if (dispatched > 0) console.log(`[scheduler] dispatched ${dispatched} tasks`)
+      } catch (err) {
+        console.error('[scheduler] tick error', err)
+      }
+    })
+    console.log(`${config.display_name} Scheduler tick active (every 1m)`)
+  } else {
+    console.log(`[scheduler] disabled (no Supabase configured)`)
+  }
 
   return { app, server }
 }
