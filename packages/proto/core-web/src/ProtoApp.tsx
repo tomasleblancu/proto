@@ -32,6 +32,14 @@ import { Toaster } from './components/ui/toaster.js'
 import type { EntityDefinition } from '../../core-shared/src/index.js'
 import type { ActiveEntity, GridLayouts, WidgetInstance } from './components/shell/types.js'
 
+export interface CompanyContextInput {
+  user: { id: string; email?: string | null }
+  role: 'admin' | 'client' | null
+  companyId: string
+  companies: { id: string; name: string }[]
+  profile: { full_name: string | null; role_title: string | null; onboarding_completed: boolean } | null
+}
+
 export interface ProtoAppProps {
   /** Widget definitions — the core of your app's UI. */
   widgets: WidgetDefinition[]
@@ -50,6 +58,25 @@ export interface ProtoAppProps {
 
   /** Login component override. */
   loginComponent?: React.ComponentType
+
+  /** Build the company_context string sent with every chat message.
+   *  Receives auth data, returns a string appended to the system prompt
+   *  as `## Empresa activa`. If omitted, a default is generated from
+   *  company name, user name, and role. */
+  buildCompanyContext?: (input: CompanyContextInput) => string
+}
+
+function defaultBuildCompanyContext({ companyId, companies, profile, role }: CompanyContextInput): string {
+  const company = companies.find(c => c.id === companyId)
+  const lines: string[] = []
+  if (company) lines.push(`Empresa: ${company.name}`)
+  if (profile?.full_name) lines.push(`Usuario: ${profile.full_name}`)
+  if (profile?.role_title) lines.push(`Cargo: ${profile.role_title}`)
+  if (role) lines.push(`Rol: ${role}`)
+  if (profile && 'onboarding_completed' in profile) {
+    lines.push(`Onboarding: ${profile.onboarding_completed ? 'completado' : 'pendiente'}`)
+  }
+  return lines.length > 0 ? lines.join('\n') : 'Sin empresa configurada'
 }
 
 export function ProtoApp({
@@ -59,6 +86,7 @@ export function ProtoApp({
   defaultLayouts: defaultLayoutsProp,
   appName,
   loginComponent: LoginComponent = LoginForm,
+  buildCompanyContext = defaultBuildCompanyContext,
 }: ProtoAppProps) {
   useTheme()
 
@@ -148,6 +176,14 @@ export function ProtoApp({
 
   const effectiveCompanyId = companyId || user.id
 
+  const companyContext = useMemo(() => buildCompanyContext({
+    user: { id: user.id, email: user.email },
+    role,
+    companyId: effectiveCompanyId,
+    companies,
+    profile,
+  }), [user.id, user.email, role, effectiveCompanyId, companies, profile, buildCompanyContext])
+
   return (
     <>
       <BrowserRouter>
@@ -160,6 +196,7 @@ export function ProtoApp({
                   companyId={effectiveCompanyId}
                   userId={user.email || user.id}
                   appName={appName}
+                  companyContext={companyContext}
                   onStreamComplete={() => setRefreshKey(k => k + 1)}
                   onRegisterSend={(fn) => { chatSendRef.current = fn }}
                   activeEntity={activeEntity}

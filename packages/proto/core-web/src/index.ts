@@ -8,7 +8,7 @@
 // Framework components
 export { default as Shell, type CockpitDefinition } from './components/Shell.js'
 export { CommandPalette, type CommandItem } from './components/CommandPalette.js'
-export { ProtoApp, type ProtoAppProps } from './ProtoApp.js'
+export { ProtoApp, type ProtoAppProps, type CompanyContextInput } from './ProtoApp.js'
 export { AdminPanel } from './components/admin/AdminPanel.js'
 export { ChatPanel } from './components/chat/ChatPanel.js'
 export { ChatMessage, type ChatMessageData } from './components/chat/ChatMessage.js'
