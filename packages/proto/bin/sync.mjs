@@ -7,7 +7,7 @@
  * Run manually or via postinstall to keep skills up-to-date with the package version.
  */
 
-import { cpSync, existsSync, readdirSync, readFileSync, copyFileSync, mkdirSync } from 'node:fs'
+import { cpSync, existsSync, readdirSync, readFileSync, copyFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -95,5 +95,40 @@ if (existsSync(migrationsSrc) && existsSync(migrationsDest)) {
 
   if (migCount > 0) {
     console.log(`proto: ${migCount} base migration(s) added — run "supabase db push" to apply`)
+  }
+}
+
+// ── MCP servers sync ────────────────────────────────────────────────────
+// Merge default MCP servers into the project's .mcp.json.
+// Adds servers that don't exist yet, never overwrites existing ones.
+
+const mcpSrc = resolve(pkgRoot, 'defaults', 'mcp.json')
+const mcpDest = resolve(projectRoot, '.mcp.json')
+
+if (existsSync(mcpSrc)) {
+  const defaults = JSON.parse(readFileSync(mcpSrc, 'utf-8'))
+  const defaultServers = defaults.mcpServers || {}
+
+  let existing = { mcpServers: {} }
+  if (existsSync(mcpDest)) {
+    try {
+      existing = JSON.parse(readFileSync(mcpDest, 'utf-8'))
+      if (!existing.mcpServers) existing.mcpServers = {}
+    } catch {
+      existing = { mcpServers: {} }
+    }
+  }
+
+  let added = 0
+  for (const [name, config] of Object.entries(defaultServers)) {
+    if (!(name in existing.mcpServers)) {
+      existing.mcpServers[name] = config
+      added++
+      console.log(`proto: added MCP server "${name}" to .mcp.json`)
+    }
+  }
+
+  if (added > 0) {
+    writeFileSync(mcpDest, JSON.stringify(existing, null, 2) + '\n')
   }
 }
