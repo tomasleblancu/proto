@@ -293,7 +293,7 @@ export default function Shell({
           className="p-2"
           width={containerWidth - 16}
           breakpoints={{ lg: 800, md: 600, sm: 0 }}
-          cols={{ lg: 10, md: 6, sm: 4 }}
+          cols={{ lg: 12, md: 8, sm: 4 }}
           rowHeight={60}
           layouts={activeCockpit.layouts}
           dragConfig={{ enabled: false, bounded: false }}
