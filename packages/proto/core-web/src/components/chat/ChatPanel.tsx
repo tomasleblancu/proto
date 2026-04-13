@@ -149,6 +149,16 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
             }
             break
 
+          case 'thinking':
+            updated[updated.length - 1] = {
+              ...last,
+              toolCalls: [
+                ...(last.toolCalls || []),
+                { tool: '__thinking__', status: 'done', args: { text: event.text || '' } },
+              ],
+            }
+            break
+
           case 'tool_use':
             updated[updated.length - 1] = {
               ...last,
