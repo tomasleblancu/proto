@@ -50,6 +50,9 @@ function resolveAppRoot(): string {
 
 export const APP_ROOT = resolveAppRoot()
 
+// Auto-load .env from APP_ROOT if it exists (does not overwrite existing vars)
+try { process.loadEnvFile(resolve(APP_ROOT, '.env')) } catch {}
+
 /** Resolve a relative path against APP_ROOT (or return absolute paths as-is). */
 export function resolveAppPath(relative: string): string {
   return isAbsolute(relative) ? relative : resolve(APP_ROOT, relative)
