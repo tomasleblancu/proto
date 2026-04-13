@@ -16,6 +16,8 @@ import { registerAdminRoutes } from './routes/admin.js'
 import { registerWhatsAppRoutes } from './routes/whatsapp.js'
 import { startMailIngester } from './mail-ingester.js'
 import { startWhatsAppChannel } from './whatsapp-kapso.js'
+import { Cron } from 'croner'
+import { tick } from './scheduler.js'
 
 export interface GatewayOptions {
   /** Override the port (default: PORT env or 8090). */
@@ -72,6 +74,17 @@ export async function createProtoGateway(opts?: GatewayOptions) {
   // Start external channel ingesters (no-op if not configured)
   startMailIngester()
   startWhatsAppChannel()
+
+  // Internal cron tick — scans scheduled_tasks every minute and dispatches due ones
+  const cronTick = new Cron('* * * * *', async () => {
+    try {
+      const { dispatched } = await tick()
+      if (dispatched > 0) console.log(`[scheduler] dispatched ${dispatched} tasks`)
+    } catch (err) {
+      console.error('[scheduler] tick error', err)
+    }
+  })
+  console.log(`${config.display_name} Scheduler tick active (every 1m)`)
 
   return { app, server }
 }

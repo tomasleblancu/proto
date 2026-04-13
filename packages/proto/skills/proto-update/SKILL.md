@@ -25,10 +25,11 @@ npm install @tleblancureta/proto@latest
 cd web && npm install @tleblancureta/proto@latest && cd ..
 ```
 
-4. Re-sync Claude Code skills:
+4. Re-sync Claude Code skills and base migrations:
 ```bash
 npx proto-sync-skills
 ```
+This also checks if base framework migrations (e.g. `scheduled_tasks`) are missing from `supabase/migrations/` and copies them with a fresh timestamp if needed. If new migrations were added, remind the user to run `supabase db push`.
 
 5. Report the version bump (e.g. "Updated from 0.7.0 → 0.8.0") and suggest checking the changelog.
 

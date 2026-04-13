@@ -23,6 +23,7 @@ import { pathToFileURL } from 'node:url'
 import { createMcpServer, runStdio, runHttp } from './index.js'
 import { registerTools, type ToolDefinition } from './define-tool.js'
 import { registerUiTools } from './tools/ui.js'
+import { registerSchedulingTools } from './tools/scheduling.js'
 import { registerEntityTools } from './entity-tools.js'
 import { registerWorkflowTools } from './workflow-tools.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -165,6 +166,7 @@ export async function createProtoMcp(opts: ProtoMcpOptions) {
   function buildServer(): McpServer {
     const server = createMcpServer({ name: opts.name, version: opts.version })
     registerUiTools(server)
+    registerSchedulingTools(server)
     if (allTools.length > 0) registerTools(server, allTools)
     if (allEntities.length > 0) registerEntityTools(server, allEntities)
     if (workflow) registerWorkflowTools(server, workflow)
