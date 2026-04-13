@@ -10,6 +10,8 @@ interface ToolCall {
 export interface ChatMessageData {
   role: 'user' | 'assistant'
   text: string
+  images?: string[]
+  files?: { name: string; type: string }[]
   loading?: boolean
   toolCalls?: ToolCall[]
 }
@@ -22,14 +24,34 @@ function getToolLabel(tool: string): string | null {
   return suffix.replace(/_/g, ' ')
 }
 
-export function ChatMessage({ role, text, loading, toolCalls }: ChatMessageData) {
+export function ChatMessage({ role, text, images, files, loading, toolCalls }: ChatMessageData) {
   const [showTools, setShowTools] = useState(false)
 
   if (role === 'user') {
     return (
       <div className="flex justify-end">
         <div className="max-w-[80%] rounded-2xl rounded-br-md px-4 py-2.5 text-sm leading-relaxed bg-muted">
-          {text}
+          {images && images.length > 0 && (
+            <div className="flex gap-1.5 mb-2 flex-wrap">
+              {images.map((src, i) => (
+                <img key={i} src={src} alt="" className="max-w-[200px] max-h-[150px] rounded-lg object-cover" />
+              ))}
+            </div>
+          )}
+          {files && files.length > 0 && (
+            <div className="flex gap-1.5 mb-2 flex-wrap">
+              {files.map((f, i) => (
+                <div key={i} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-background/40 border border-border/40 max-w-[220px]">
+                  <svg className="w-4 h-4 text-muted-foreground shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  <span className="text-xs truncate">{f.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {text && text !== '(attached file)' && text}
         </div>
       </div>
     )

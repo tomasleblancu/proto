@@ -70,6 +70,28 @@ interface Props {
   overlays?: ReactNode
 }
 
+const SHELL_STYLES = `
+#shell-root.proto-canvas {
+  --dot-color: hsl(var(--muted-foreground) / 0.13);
+  --dot-size: 1.5px;
+  --dot-gap: 18px;
+  --cross-color: hsl(var(--muted-foreground) / 0.06);
+  background-color: hsl(var(--background));
+  background-image:
+    radial-gradient(circle, var(--dot-color) var(--dot-size), transparent var(--dot-size)),
+    linear-gradient(var(--cross-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--cross-color) 1px, transparent 1px);
+  background-size:
+    var(--dot-gap) var(--dot-gap),
+    calc(var(--dot-gap) * 5) calc(var(--dot-gap) * 5),
+    calc(var(--dot-gap) * 5) calc(var(--dot-gap) * 5);
+}
+.dark #shell-root.proto-canvas {
+  --dot-color: hsl(var(--muted-foreground) / 0.11);
+  --cross-color: hsl(var(--muted-foreground) / 0.04);
+}
+`
+
 export default function Shell({
   widgets: widgetRegistry,
   defaultWidgets,
@@ -202,7 +224,8 @@ export default function Shell({
   ], [widgetRegistry, addWidget])
 
   return (
-    <div ref={containerRef} id="shell-root" className="h-full overflow-y-auto scrollbar-thin bg-background dotted-bg relative">
+    <div ref={containerRef} id="shell-root" className="h-full overflow-y-auto scrollbar-thin bg-background proto-canvas relative">
+      <style dangerouslySetInnerHTML={{ __html: SHELL_STYLES }} />
       <Toolbar
         widgetCount={widgets.length}
         cockpitMode={cockpitMode}

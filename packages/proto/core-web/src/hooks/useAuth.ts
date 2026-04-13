@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../lib/supabase.js'
+import { supabase, isSandbox } from '../lib/supabase.js'
 import type { User } from '@supabase/supabase-js'
 
 interface Company {
@@ -22,7 +22,33 @@ interface AuthState {
   loading: boolean
 }
 
-export function useAuth(): AuthState & { signOut: () => void; setCompanyId: (id: string) => void; reload: () => Promise<void> } {
+const SANDBOX_USER = {
+  id: 'sandbox-user',
+  email: 'sandbox@localhost',
+  app_metadata: {},
+  user_metadata: {},
+  aud: 'authenticated',
+  created_at: new Date().toISOString(),
+} as unknown as User
+
+type AuthReturn = AuthState & { signOut: () => void; setCompanyId: (id: string) => void; reload: () => Promise<void> }
+
+function useSandboxAuth(): AuthReturn {
+  const [companyId, setCompanyId] = useState('sandbox-company')
+  return {
+    user: SANDBOX_USER,
+    role: 'admin',
+    companyId,
+    companies: [{ id: 'sandbox-company', name: 'Sandbox' }],
+    profile: { full_name: 'Sandbox User', role_title: null, onboarding_completed: true },
+    loading: false,
+    signOut: () => {},
+    setCompanyId,
+    reload: async () => {},
+  }
+}
+
+function useSupabaseAuth(): AuthReturn {
   const [state, setState] = useState<AuthState>({
     user: null, role: null, companyId: null, companies: [], profile: null, loading: true,
   })
@@ -77,4 +103,8 @@ export function useAuth(): AuthState & { signOut: () => void; setCompanyId: (id:
       await loadUser(user)
     },
   }
+}
+
+export function useAuth(): AuthReturn {
+  return isSandbox ? useSandboxAuth() : useSupabaseAuth()
 }

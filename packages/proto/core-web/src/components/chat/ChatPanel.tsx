@@ -6,8 +6,15 @@
  */
 import { useState, useRef, useCallback } from 'react'
 import { protoSocket, sendChatWs, resetSession, type StreamEvent } from '../../lib/api.js'
+import { GATEWAY_URL, INTERNAL_SECRET as SECRET } from '../../lib/config.js'
 import { ChatMessage, type ChatMessageData } from './ChatMessage.js'
-import { ChatInput } from './ChatInput.js'
+import { ChatInput, type Attachment } from './ChatInput.js'
+
+interface ActiveEntity {
+  type: string
+  id: string
+  label: string
+}
 
 interface Props {
   companyId: string
@@ -17,13 +24,26 @@ interface Props {
   onStreamComplete?: () => void
   /** Expose a send function so the Shell can send messages programmatically */
   onRegisterSend?: (fn: (msg: string) => void) => void
+  /** Active entity — when set, chat uses a dedicated session for this entity */
+  activeEntity?: ActiveEntity | null
+  /** Called when user wants to exit entity context */
+  onClearEntity?: () => void
 }
 
 const STORAGE_PREFIX = 'proto-chat-'
 
-function loadMessages(companyId: string): ChatMessageData[] {
+function sessionKeyFor(entity?: ActiveEntity | null): string {
+  if (entity?.type && entity?.id) return `${entity.type}-${entity.id}`
+  return 'web'
+}
+
+function storageKey(companyId: string, session: string) {
+  return `${STORAGE_PREFIX}${companyId}-${session}`
+}
+
+function loadMessages(companyId: string, session: string): ChatMessageData[] {
   try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${companyId}`)
+    const raw = localStorage.getItem(storageKey(companyId, session))
     if (!raw) return []
     return (JSON.parse(raw) as ChatMessageData[]).map(m => ({
       ...m, loading: false,
@@ -32,10 +52,10 @@ function loadMessages(companyId: string): ChatMessageData[] {
   } catch { return [] }
 }
 
-function saveMessages(companyId: string, messages: ChatMessageData[]) {
+function saveMessages(companyId: string, session: string, messages: ChatMessageData[]) {
   try {
     localStorage.setItem(
-      `${STORAGE_PREFIX}${companyId}`,
+      storageKey(companyId, session),
       JSON.stringify(messages.filter(m => !m.loading || m.text)),
     )
   } catch {}
@@ -45,20 +65,23 @@ function allDone(tcs: ChatMessageData['toolCalls']) {
   return (tcs || []).map(tc => ({ ...tc, status: 'done' as const }))
 }
 
-export function ChatPanel({ companyId, userId, appName, companyContext, onStreamComplete, onRegisterSend }: Props) {
-  const [messages, setMessages] = useState<ChatMessageData[]>(() => loadMessages(companyId))
+export function ChatPanel({ companyId, userId, appName, companyContext, onStreamComplete, onRegisterSend, activeEntity, onClearEntity }: Props) {
+  const sessionKey = sessionKeyFor(activeEntity)
+  const [messages, setMessages] = useState<ChatMessageData[]>(() => loadMessages(companyId, sessionKey))
   const [streaming, setStreaming] = useState(false)
-  const [queue, setQueue] = useState<string[]>([])
-  const queueRef = useRef<string[]>([])
+  const [queue, setQueue] = useState<Array<{ text: string; serverPaths?: string[]; displayImages?: string[]; files?: { name: string; type: string }[] }>>([])
+  const queueRef = useRef<Array<{ text: string; serverPaths?: string[]; displayImages?: string[]; files?: { name: string; type: string }[] }>>([])
   const bottomRef = useRef<HTMLDivElement>(null)
   const streamingRef = useRef(false)
   const companyRef = useRef(companyId)
+  const sessionRef = useRef(sessionKey)
   const scrolledOnMount = useRef(false)
 
-  // Reset state when company changes
-  if (companyRef.current !== companyId) {
+  // Reset state when company or session changes
+  if (companyRef.current !== companyId || sessionRef.current !== sessionKey) {
     companyRef.current = companyId
-    setMessages(loadMessages(companyId))
+    sessionRef.current = sessionKey
+    setMessages(loadMessages(companyId, sessionKey))
     queueRef.current = []
     setQueue([])
     setStreaming(false)
@@ -79,20 +102,30 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
     onRegisterSend((msg: string) => sendRef.current(msg))
   }
 
+  const addFilesRef = useRef<(files: File[]) => void>(() => {})
+
   const drainQueue = () => {
     const next = queueRef.current.shift()
     setQueue([...queueRef.current])
     if (next) {
-      setTimeout(() => processMessageRef.current(next), 0)
+      setTimeout(() => processMessageRef.current(next.text, next.serverPaths, next.displayImages, next.files), 0)
     }
   }
 
-  const processMessageRef = useRef<(text: string) => void>(() => {})
+  const processMessageRef = useRef<(text: string, serverPaths?: string[], displayImages?: string[], files?: { name: string; type: string }[]) => void>(() => {})
 
-  const processMessage = useCallback((text: string) => {
+  const processMessage = useCallback((text: string, serverPaths?: string[], displayImages?: string[], files?: { name: string; type: string }[]) => {
+    let fullMessage = text
+    if (serverPaths && serverPaths.length > 0) {
+      const filePaths = serverPaths.filter(url => url.startsWith('/'))
+      if (filePaths.length > 0) {
+        fullMessage += '\n\n[The user attached files (images and/or PDFs). Read each one with the Read tool to process them: ' + filePaths.join(', ') + ']'
+      }
+    }
+
     setMessages(prev => [
       ...prev,
-      { role: 'user' as const, text },
+      { role: 'user' as const, text, images: displayImages, files },
       { role: 'assistant' as const, text: '', loading: true, toolCalls: [] },
     ])
     setStreaming(true)
@@ -140,7 +173,7 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
             setStreaming(false)
             streamingRef.current = false
             onStreamComplete?.()
-            saveMessages(companyId, updated)
+            saveMessages(companyId, sessionKey, updated)
             drainQueue()
             break
 
@@ -153,7 +186,7 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
             setStreaming(false)
             streamingRef.current = false
             onStreamComplete?.()
-            saveMessages(companyId, updated)
+            saveMessages(companyId, sessionKey, updated)
             drainQueue()
             break
         }
@@ -167,7 +200,8 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
     sendChatWs({
       company_id: companyId,
       user_id: userId,
-      message: text,
+      message: fullMessage,
+      session_key: sessionKey,
       company_context: companyContext,
     }).catch(err => {
       setStreaming(false)
@@ -185,14 +219,41 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
 
   processMessageRef.current = processMessage
 
-  const handleSend = useCallback((text: string) => {
+  const handleSend = useCallback(async (text: string, attachments?: Attachment[]) => {
+    let serverPaths: string[] | undefined
+    let displayImages: string[] | undefined
+    let fileMeta: { name: string; type: string }[] | undefined
+
+    if (attachments && attachments.length > 0) {
+      displayImages = attachments.map(a => a.preview).filter(Boolean)
+      fileMeta = attachments
+        .filter(a => !a.file.type.startsWith('image/'))
+        .map(a => ({ name: a.file.name, type: a.file.type }))
+      const paths: string[] = []
+
+      for (const att of attachments) {
+        const form = new FormData()
+        form.append('file', att.file)
+        form.append('company_id', companyId)
+        try {
+          const res = await fetch(`${GATEWAY_URL}/upload`, {
+            method: 'POST',
+            headers: { 'X-Internal-Secret': SECRET },
+            body: form,
+          })
+          if (res.ok) { const { path } = await res.json(); paths.push(path) }
+        } catch {}
+      }
+      serverPaths = paths.length > 0 ? paths : undefined
+    }
+
     if (streamingRef.current) {
-      queueRef.current.push(text)
+      queueRef.current.push({ text, serverPaths, displayImages, files: fileMeta })
       setQueue([...queueRef.current])
       return
     }
-    processMessage(text)
-  }, [processMessage])
+    processMessage(text, serverPaths, displayImages, fileMeta)
+  }, [processMessage, companyId])
 
   sendRef.current = handleSend
 
@@ -202,8 +263,8 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
     streamingRef.current = false
     queueRef.current = []
     setQueue([])
-    localStorage.removeItem(`${STORAGE_PREFIX}${companyId}`)
-    resetSession(companyId)
+    localStorage.removeItem(storageKey(companyId, sessionKey))
+    resetSession(companyId, sessionKey)
   }
 
   const msgCount = messages.filter(m => m.role === 'user').length
@@ -253,12 +314,35 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
       {/* Input */}
       <div className="border-t border-border bg-background">
         <div className="px-3 py-2">
+          {activeEntity && (
+            <div className="mb-2 flex items-center gap-2 px-2 py-1.5 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-primary/80 leading-tight">
+                  Session for {activeEntity.type}
+                </p>
+                <p className="text-xs font-medium truncate">{activeEntity.label}</p>
+              </div>
+              {onClearEntity && (
+                <button
+                  onClick={onClearEntity}
+                  className="text-muted-foreground/60 hover:text-foreground transition-colors shrink-0"
+                  aria-label="Exit entity context"
+                  title="Exit entity context"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
           {queue.length > 0 && (
             <div className="mb-2 space-y-1">
               {queue.map((q, i) => (
                 <div key={i} className="flex items-center gap-2 px-2 py-1 rounded-md bg-muted/50 border border-border/50 text-[11px]">
                   <span className="text-muted-foreground/60 shrink-0">Queued</span>
-                  <span className="flex-1 truncate">{q}</span>
+                  <span className="flex-1 truncate">{q.text}</span>
                   <button
                     onClick={() => {
                       queueRef.current.splice(i, 1)
@@ -278,6 +362,7 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
           <ChatInput
             onSend={handleSend}
             placeholder={streaming ? 'Agent working — your message will be queued...' : 'Type a message...'}
+            onRegisterAddFiles={(fn) => { addFilesRef.current = fn }}
           />
           {streaming && (
             <div className="flex items-center justify-end mt-1.5">
