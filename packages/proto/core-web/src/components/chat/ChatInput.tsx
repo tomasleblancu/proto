@@ -11,10 +11,12 @@ interface Props {
   onSend: (message: string, attachments?: Attachment[]) => void
   disabled?: boolean
   placeholder?: string
+  streaming?: boolean
+  onCancel?: () => void
   onRegisterAddFiles?: (fn: (files: File[]) => void) => void
 }
 
-export function ChatInput({ onSend, disabled, placeholder, onRegisterAddFiles }: Props) {
+export function ChatInput({ onSend, disabled, placeholder, streaming, onCancel, onRegisterAddFiles }: Props) {
   const [value, setValue] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const ref = useRef<HTMLTextAreaElement>(null)
@@ -149,17 +151,31 @@ export function ChatInput({ onSend, disabled, placeholder, onRegisterAddFiles }:
           rows={1}
           className="flex-1 min-h-[36px] max-h-[120px] resize-none bg-card border-border py-2"
         />
-        <Button
-          size="icon"
-          onClick={handleSubmit}
-          disabled={disabled || (!value.trim() && attachments.length === 0)}
-          className="flex-shrink-0"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
-        </Button>
+        {streaming ? (
+          <Button
+            size="icon"
+            variant="destructive"
+            onClick={onCancel}
+            className="flex-shrink-0"
+            aria-label="Stop"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="6" width="12" height="12" rx="1" />
+            </svg>
+          </Button>
+        ) : (
+          <Button
+            size="icon"
+            onClick={handleSubmit}
+            disabled={disabled || (!value.trim() && attachments.length === 0)}
+            className="flex-shrink-0"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </Button>
+        )}
       </div>
     </div>
   )

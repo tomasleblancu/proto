@@ -372,29 +372,21 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
           <ChatInput
             onSend={handleSend}
             placeholder={streaming ? 'Agent working — your message will be queued...' : 'Type a message...'}
+            streaming={streaming}
+            onCancel={() => {
+              setStreaming(false)
+              streamingRef.current = false
+              setMessages(prev => {
+                const copy = [...prev]
+                const last = copy[copy.length - 1]
+                if (last?.role === 'assistant' && last.loading) {
+                  copy[copy.length - 1] = { ...last, loading: false, text: last.text || '(cancelled)' }
+                }
+                return copy
+              })
+            }}
             onRegisterAddFiles={(fn) => { addFilesRef.current = fn }}
           />
-          {streaming && (
-            <div className="flex items-center justify-end mt-1.5">
-              <button
-                onClick={() => {
-                  setStreaming(false)
-                  streamingRef.current = false
-                  setMessages(prev => {
-                    const copy = [...prev]
-                    const last = copy[copy.length - 1]
-                    if (last?.role === 'assistant' && last.loading) {
-                      copy[copy.length - 1] = { ...last, loading: false, text: last.text || '(cancelled)' }
-                    }
-                    return copy
-                  })
-                }}
-                className="text-[10px] text-muted-foreground/60 hover:text-red-500 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
