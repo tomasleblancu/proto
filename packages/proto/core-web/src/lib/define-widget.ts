@@ -44,6 +44,11 @@ export interface WidgetSize {
   minH: number
 }
 
+export interface ConfigPanelProps {
+  companyId: string
+  widgetType: string
+}
+
 export interface WidgetDefinition {
   type: string
   title: string
@@ -51,6 +56,8 @@ export interface WidgetDefinition {
   category: WidgetCategory
   defaultSize?: WidgetSize
   render: (instance: WidgetInstance, ctx: ShellContext) => ReactNode
+  /** Optional config panel rendered in Admin > Widgets when clicking this widget. */
+  configPanel?: (props: ConfigPanelProps) => ReactNode
 }
 
 export function defineWidget(def: WidgetDefinition): WidgetDefinition {

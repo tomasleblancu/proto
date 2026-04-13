@@ -26,6 +26,7 @@ export {
   type WidgetCategory,
   type WidgetSize,
   type ShellContext,
+  type ConfigPanelProps,
 } from './lib/define-widget.js'
 export type { ActiveEntity, GridLayouts, LayoutItem, WidgetInstance, WidgetType } from './components/shell/types.js'
 
@@ -36,6 +37,7 @@ export { useData } from './hooks/useData.js'
 export { useMountEffect } from './hooks/useMountEffect.js'
 export { useRealtime } from './hooks/useRealtime.js'
 export { useTheme, type Theme } from './hooks/useTheme.js'
+export { useWidgetSettings } from './hooks/useWidgetSettings.js'
 
 // Lib
 export * from './lib/api.js'

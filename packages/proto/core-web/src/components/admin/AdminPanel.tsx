@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase.js'
 import { Button } from '../ui/button.js'
 import {
   ArrowLeftIcon, UsersIcon, Building2Icon, WrenchIcon,
-  LayoutGridIcon, SearchIcon,
+  LayoutGridIcon, SearchIcon, SettingsIcon,
 } from 'lucide-react'
 import { SystemTab } from './SystemTab.js'
 import type { WidgetRegistry } from '../../lib/define-widget.js'
@@ -237,22 +237,55 @@ function CompaniesTab() {
 /* ── Widgets Tab ───────────────────────────────────────── */
 
 function WidgetsTab({ widgets }: { widgets?: WidgetRegistry }) {
+  const { companyId } = useAuth()
+  const [selectedWidget, setSelectedWidget] = useState<string | null>(null)
+
   const entries = useMemo(() => {
     if (!widgets) return []
     return Array.from(widgets.values()).map(w => ({
       type: w.type, title: w.title, icon: w.icon || '▦', category: w.category || 'general',
+      hasConfig: !!w.configPanel,
     }))
   }, [widgets])
+
+  // Detail view: show config panel for selected widget
+  if (selectedWidget && widgets && companyId) {
+    const def = widgets.get(selectedWidget)
+    if (!def?.configPanel) { setSelectedWidget(null); return null }
+    return (
+      <div>
+        <div className="flex items-center gap-3 mb-6">
+          <Button variant="ghost" size="sm" className="h-8 gap-1.5" onClick={() => setSelectedWidget(null)}>
+            <ArrowLeftIcon className="w-4 h-4" /> Widgets
+          </Button>
+          <div className="h-4 w-px bg-border" />
+          <span className="text-lg">{def.icon || '▦'}</span>
+          <h2 className="text-lg font-semibold">{def.title}</h2>
+          <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">{def.type}</span>
+        </div>
+        <div className="border border-border rounded-lg p-6">
+          {def.configPanel({ companyId, widgetType: def.type })}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
       <h2 className="text-lg font-semibold mb-4">Widgets registrados</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {entries.map(w => (
-          <div key={w.type} className="border border-border rounded-lg p-4 hover:bg-accent/30 transition-colors">
+          <div
+            key={w.type}
+            onClick={w.hasConfig ? () => setSelectedWidget(w.type) : undefined}
+            className={`border border-border rounded-lg p-4 transition-colors ${
+              w.hasConfig ? 'cursor-pointer hover:bg-accent/30 hover:border-primary/30' : 'hover:bg-accent/30'
+            }`}
+          >
             <div className="flex items-center gap-2 mb-1">
               <span className="text-lg">{w.icon}</span>
               <span className="font-medium text-sm">{w.title}</span>
+              {w.hasConfig && <SettingsIcon className="w-3.5 h-3.5 text-muted-foreground ml-auto" />}
             </div>
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">{w.type}</span>

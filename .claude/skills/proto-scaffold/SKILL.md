@@ -215,6 +215,7 @@ Una vez que tenés lo básico andando:
 - **Más entities**: `proto-entity` skill
 - **Más tools**: `proto-tool` skill
 - **Widgets cockpit**: `proto-widget` skill
+- **Widget config**: `configPanel` + `useWidgetSettings` — ver sección "Widget con configuración" en `proto-widget` skill
 - **Migraciones**: `proto-migration` skill
 - **Deploy**: `proto-deploy` skill
 - **Debugging**: `proto-debug` skill
