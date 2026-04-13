@@ -17,7 +17,7 @@
  *     return <ProtoApp widgets={widgets} />
  *   }
  */
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Shell, { type CockpitDefinition } from './components/Shell.js'
 import { AdminPanel } from './components/admin/AdminPanel.js'
@@ -26,6 +26,7 @@ import { useAuth } from './hooks/useAuth.js'
 import { useTheme } from './hooks/useTheme.js'
 import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget.js'
 import { protoSocket, sendChatWs } from './lib/api.js'
+import { ChatPanel } from './components/chat/ChatPanel.js'
 import { Toaster } from './components/ui/toaster.js'
 import type { EntityDefinition } from '../../core-shared/src/index.js'
 import type { ActiveEntity, GridLayouts, WidgetInstance } from './components/shell/types.js'
@@ -92,9 +93,11 @@ export function ProtoApp({
     return { lg, md: lg, sm: lg }
   }, [defaultWidgets, defaultLayoutsProp])
 
+  const chatSendRef = useRef<((msg: string) => void) | null>(null)
+
   const onSendToChat = useCallback((message: string) => {
-    sendChatWs({ company_id: companyId || '', user_id: user?.id || '', message })
-  }, [companyId, user?.id])
+    chatSendRef.current?.(message)
+  }, [])
 
   const activateEntity = useCallback((e: ActiveEntity) => {
     setActiveEntity(e as Entity)
@@ -150,26 +153,41 @@ export function ProtoApp({
         <Routes>
           <Route path="/admin" element={<AdminPanel widgets={widgetRegistry} />} />
           <Route path="*" element={
-            <Shell
-              widgets={widgetRegistry}
-              defaultWidgets={defaultWidgets}
-              defaultLayouts={defaultLayouts}
-              cockpits={cockpits}
-              companyId={effectiveCompanyId}
-              refreshKey={refreshKey}
-              onSendToChat={onSendToChat}
-              activeEntity={activeEntity}
-              onActivateEntity={activateEntity}
-              onDeactivateEntity={() => setActiveEntity(null)}
-              openEntities={openEntities}
-              onCloseTab={closeEntityTab}
-              role={role}
-              companies={companies}
-              effectiveCompanyId={effectiveCompanyId}
-              setCompanyId={setCompanyId}
-              onSignOut={signOut}
-              userEmail={profile?.full_name || user.email || ''}
-            />
+            <div className="flex h-screen overflow-hidden">
+              {/* Chat — left panel */}
+              <div className="w-[380px] min-w-[300px] max-w-[500px] border-r border-border flex flex-col bg-background">
+                <ChatPanel
+                  companyId={effectiveCompanyId}
+                  userId={user.email || user.id}
+                  appName={appName}
+                  onStreamComplete={() => setRefreshKey(k => k + 1)}
+                  onRegisterSend={(fn) => { chatSendRef.current = fn }}
+                />
+              </div>
+              {/* Shell — right canvas */}
+              <div className="flex-1 min-w-0">
+                <Shell
+                  widgets={widgetRegistry}
+                  defaultWidgets={defaultWidgets}
+                  defaultLayouts={defaultLayouts}
+                  cockpits={cockpits}
+                  companyId={effectiveCompanyId}
+                  refreshKey={refreshKey}
+                  onSendToChat={onSendToChat}
+                  activeEntity={activeEntity}
+                  onActivateEntity={activateEntity}
+                  onDeactivateEntity={() => setActiveEntity(null)}
+                  openEntities={openEntities}
+                  onCloseTab={closeEntityTab}
+                  role={role}
+                  companies={companies}
+                  effectiveCompanyId={effectiveCompanyId}
+                  setCompanyId={setCompanyId}
+                  onSignOut={signOut}
+                  userEmail={profile?.full_name || user.email || ''}
+                />
+              </div>
+            </div>
           } />
         </Routes>
       </BrowserRouter>
