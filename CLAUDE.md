@@ -29,17 +29,6 @@ proto/
 │   ├── core-gateway/                   Hono HTTP+WS, Claude CLI runner, scheduler, mail
 │   └── create-proto-app/               CLI scaffolder
 ├── examples/
-│   ├── hermes/                         Production app (89 tools, 20 widgets, 2 entities)
-│   │   ├── app/
-│   │   │   ├── tools/*.ts              Auto-discovered by createProtoMcp
-│   │   │   ├── entities/*.ts           Auto-discovered
-│   │   │   ├── workflows/*.ts          Auto-discovered
-│   │   │   ├── skills/*/SKILL.md       Auto-discovered by gateway
-│   │   │   ├── prompts/*.md            Via project.yaml
-│   │   │   ├── mcp.ts                  2 lines: createProtoMcp + stdio
-│   │   │   └── mcp-http.ts            2 lines: createProtoMcp + http
-│   │   ├── web/                        Hermes frontend (custom App.tsx, Chat, modals)
-│   │   └── supabase/migrations/        30 SQL files
 │   └── minimal/                        Template for new apps
 │       ├── app/
 │       │   ├── tools/items.ts          3 example tools
@@ -237,22 +226,21 @@ User chats → gateway passes to Claude CLI → Claude calls MCP tools → tools
 npm install              # install all workspaces
 npm run build            # build all packages + apps
 npm test                 # vitest (41 tests)
-npm run dev:gateway      # gateway on :8092 (PROTO_APP_ROOT=examples/hermes)
-npm run dev:web          # hermes frontend on :3001
-npm run dev:minimal-web  # minimal frontend on :3002
+npm run dev:gateway      # gateway on :8092 (PROTO_APP_ROOT=examples/minimal)
+npm run dev:web          # minimal frontend on :3002
 ```
 
 ### MCP smoke test
 ```bash
-cd examples/hermes && npx tsx --eval "
+cd examples/minimal && npx tsx --eval "
 async function main() {
   const { createProtoMcp } = await import('@tleblancureta/proto/mcp')
-  const app = await createProtoMcp({ name: 'hermes' })
+  const app = await createProtoMcp({ name: 'minimal' })
   console.log('tools:', app.toolCount)
 }
 main().then(() => process.exit(0))
 "
-# expected: tools: 92
+# expected: tools: 24
 ```
 
 ## Deploy

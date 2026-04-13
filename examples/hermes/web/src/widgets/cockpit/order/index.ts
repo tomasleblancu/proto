@@ -1,8 +1,0 @@
-export { OrderHeaderWidget } from './Header'
-export { OrderSupplierWidget } from './Supplier'
-export { OrderDocsWidget } from './Docs'
-export { OrderTimelineWidget } from './Timeline'
-export { OrderContactsWidget } from './Contacts'
-export { OrderFindingsWidget } from './Findings'
-export { OrderCostingWidget } from './Costing'
-export type { BaseProps } from './shared'

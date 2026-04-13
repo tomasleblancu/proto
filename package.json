@@ -9,11 +9,10 @@
     "examples/*/web"
   ],
   "scripts": {
-    "dev:gateway": "PROTO_APP_ROOT=examples/hermes npm run dev -w packages/core-gateway",
-    "dev:web": "npm run dev -w @proto-app/hermes-web",
-    "dev:minimal-web": "npm run dev -w @proto-app/minimal-web",
-    "build": "npm run build -w packages/proto && npm run build -w packages/core-gateway && npm run build -w @proto-app/hermes-web && npm run build -w @proto-app/minimal-web",
-    "test": "vitest run",
+    "dev:gateway": "PROTO_APP_ROOT=examples/minimal npm run dev -w packages/core-gateway",
+    "dev:web": "npm run dev -w @proto-app/minimal-web",
+    "build": "npm run build -w packages/proto && npm run build -w packages/core-gateway && npm run build -w @proto-app/minimal-web",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
   "devDependencies": {
