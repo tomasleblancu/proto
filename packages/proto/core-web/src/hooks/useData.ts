@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 /**
  * Minimal data-fetching hook. Replaces the `useEffect(() => fetch().then(setState), [deps])` pattern.
- * Handles stale closures via an abort flag. Components should never useEffect for fetching.
+ * Handles stale closures via AbortController. Components should never useEffect for fetching.
  */
 export function useData<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
@@ -12,7 +12,6 @@ export function useData<T>(
   const [data, setData] = useState<T>(initial)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const mountedRef = useRef(true)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -34,11 +33,6 @@ export function useData<T>(
       })
     return () => controller.abort()
   }, deps)
-
-  useEffect(() => {
-    mountedRef.current = true
-    return () => { mountedRef.current = false }
-  }, [])
 
   return { data, loading, error }
 }

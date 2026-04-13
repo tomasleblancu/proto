@@ -1,8 +1,5 @@
 FROM node:22-slim
 
-ARG APP_NAME=minimal
-ENV PROTO_APP_NAME=${APP_NAME}
-
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends curl git ca-certificates && \
     rm -rf /var/lib/apt/lists/*
@@ -15,19 +12,13 @@ RUN mkdir -p /data/sessions /data/claude /data/claude-config
 
 WORKDIR /app
 
-# Install dependencies — copy all workspace package.json files first for cache
+# Install dependencies — copy package.json files first for cache
 COPY package.json .
-COPY packages/proto/package.json packages/proto/
-COPY packages/core-gateway/package.json packages/core-gateway/
-COPY examples/${APP_NAME}/package.json examples/${APP_NAME}/
-COPY examples/${APP_NAME}/web/package.json examples/${APP_NAME}/web/
+COPY web/package.json web/
 RUN npm install --ignore-scripts
 
 # Copy source
-COPY tsconfig.json .
-COPY packages/proto/ packages/proto/
-COPY packages/core-gateway/ packages/core-gateway/
-COPY examples/${APP_NAME}/ examples/${APP_NAME}/
+COPY . .
 
 # Frontend env vars (baked into Vite bundle at build time)
 # VITE_GATEWAY_URL: omit for all-in-one deploy (frontend auto-detects same origin)
@@ -40,15 +31,15 @@ ENV VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
 ENV VITE_GATEWAY_URL=${VITE_GATEWAY_URL}
 ENV VITE_INTERNAL_SECRET=${VITE_INTERNAL_SECRET}
 
-# Build frontend (Vite resolves proto/web from source via monorepo aliases)
-RUN cd examples/${APP_NAME}/web && npx vite build
+# Build frontend
+RUN cd web && npx vite build
 
 ENV DATA_DIR=/data
 ENV CLAUDE_CONFIG_DIR=/data/claude
 ENV HOME=/data
-ENV PROTO_APP_ROOT=/app/examples/${APP_NAME}
+ENV PROTO_APP_ROOT=/app
 
-EXPOSE ${PORT:-8090}
+EXPOSE ${PORT:-8092}
 
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh

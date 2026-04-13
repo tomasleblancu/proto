@@ -17,43 +17,9 @@ Guía para diagnosticar problemas comunes en apps proto. La mayoría son issues 
 - "el MCP server no conecta"
 - "session key inválida"
 
-## Variables de entorno faltantes
-
-Antes de debuggear otra cosa, verificar que `.env` tiene todos los valores reales (no los placeholders del `.env.example`):
-
-```bash
-# Verificar que no quedaron placeholders
-grep -n 'your-\|change-this\|your_' .env
-```
-
-Si aparecen resultados, el usuario todavía no configuró esas variables. Los valores obligatorios son:
-
-| Variable | Cómo obtener |
-|---|---|
-| `SUPABASE_URL` | Supabase → Settings → API → Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API → service_role key |
-| `SUPABASE_ANON_KEY` | Supabase → Settings → API → anon key |
-| `CLAUDE_SETUP_TOKEN` | Correr `claude setup-token` |
-| `INTERNAL_API_SECRET` | `openssl rand -hex 32` |
-
-Las variables `VITE_*` deben coincidir con sus contrapartes backend:
-- `VITE_SUPABASE_URL` = `SUPABASE_URL`
-- `VITE_SUPABASE_ANON_KEY` = `SUPABASE_ANON_KEY`
-- `VITE_INTERNAL_SECRET` = `INTERNAL_API_SECRET`
-
-### Errores comunes por env incompleto
-
-| Error | Variable faltante |
-|---|---|
-| `Invalid URL` o `fetch failed` al arrancar | `SUPABASE_URL` sin configurar |
-| `invalid API key` en logs de Supabase | `SUPABASE_SERVICE_ROLE_KEY` o `SUPABASE_ANON_KEY` con placeholder |
-| `401 Unauthorized` en requests al gateway | `INTERNAL_API_SECRET` / `VITE_INTERNAL_SECRET` no coinciden |
-| Claude no responde en el chat | `CLAUDE_SETUP_TOKEN` sin configurar |
-| Frontend no conecta al gateway | `VITE_GATEWAY_URL` incorrecto |
-
 ## Path resolution
 
-El problema más común después de env vars. Todo path en proto se resuelve via `PROTO_APP_ROOT`.
+El problema más común. Todo path en proto se resuelve via `PROTO_APP_ROOT`.
 
 ### Cómo funciona
 

@@ -1,10 +1,27 @@
-import { useState, useCallback, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMountEffect } from '../../hooks/useMountEffect.js'
 import { Button } from '../ui/button.js'
 import { PlusIcon, RotateCcwIcon, SunIcon, MoonIcon, MonitorIcon, UserIcon, LogOutIcon, Building2Icon, ChevronDownIcon, CheckIcon, XIcon, HomeIcon, SettingsIcon, LayoutGridIcon, ShieldIcon } from 'lucide-react'
 import { useTheme, type Theme } from '../../hooks/useTheme.js'
 import type { ActiveEntity, WidgetType } from './types.js'
+
+function ToolbarDropdown({ open, onClose, width = 'w-48', children }: {
+  open: boolean
+  onClose: () => void
+  width?: string
+  children: ReactNode
+}) {
+  if (!open) return null
+  return (
+    <>
+      <div className="fixed inset-0 z-20" onClick={onClose} />
+      <div className={`absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg p-1 z-30 ${width}`}>
+        {children}
+      </div>
+    </>
+  )
+}
 
 interface CatalogEntry {
   type: WidgetType
@@ -133,28 +150,23 @@ export function Toolbar({
               <span className="truncate">{currentCompany?.name || 'Empresa'}</span>
               <ChevronDownIcon className="w-3 h-3 shrink-0 opacity-60" />
             </Button>
-            {showCompany && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setOpenDropdown(null)} />
-                <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg p-1 z-30 w-60 max-h-80 overflow-y-auto scrollbar-thin">
-                  <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground/60">Empresas</div>
-                  {companies.map(c => {
-                    const active = c.id === effectiveCompanyId
-                    return (
-                      <button
-                        key={c.id}
-                        onClick={() => { setCompanyId(c.id); setOpenDropdown(null) }}
-                        className={`w-full text-left px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2 ${active ? 'bg-accent/50' : ''}`}
-                      >
-                        <Building2Icon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                        <span className="flex-1 truncate">{c.name}</span>
-                        {active && <CheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />}
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
-            )}
+            <ToolbarDropdown open={showCompany} onClose={() => setOpenDropdown(null)} width="w-60 max-h-80 overflow-y-auto scrollbar-thin">
+              <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground/60">Empresas</div>
+              {companies.map(c => {
+                const active = c.id === effectiveCompanyId
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => { setCompanyId(c.id); setOpenDropdown(null) }}
+                    className={`w-full text-left px-2 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2 ${active ? 'bg-accent/50' : ''}`}
+                  >
+                    <Building2Icon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                    <span className="flex-1 truncate">{c.name}</span>
+                    {active && <CheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />}
+                  </button>
+                )
+              })}
+            </ToolbarDropdown>
           </div>
         )}
         {rightActions}
@@ -162,63 +174,53 @@ export function Toolbar({
           <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => toggleDropdown('catalog')}>
             <PlusIcon className="w-3 h-3" /> Agregar
           </Button>
-          {showCatalog && (
-            <>
-            <div className="fixed inset-0 z-20" onClick={() => setOpenDropdown(null)} />
-            <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg p-1 z-30 w-40">
-              {widgetCatalog.map(w => (
-                <button
-                  key={w.type}
-                  onClick={() => { onAddWidget(w.type); setOpenDropdown(null) }}
-                  className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
-                >
-                  <span>{w.icon}</span> {w.title}
-                </button>
-              ))}
-            </div>
-            </>
-          )}
+          <ToolbarDropdown open={showCatalog} onClose={() => setOpenDropdown(null)} width="w-40">
+            {widgetCatalog.map(w => (
+              <button
+                key={w.type}
+                onClick={() => { onAddWidget(w.type); setOpenDropdown(null) }}
+                className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
+              >
+                <span>{w.icon}</span> {w.title}
+              </button>
+            ))}
+          </ToolbarDropdown>
         </div>
         {onSignOut && (
           <div className="relative ml-1">
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => toggleDropdown('profile')} aria-label="Perfil">
               <UserIcon className="w-3.5 h-3.5" />
             </Button>
-            {showProfile && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setOpenDropdown(null)} />
-                <div className="absolute right-0 top-8 bg-card border border-border rounded-lg shadow-lg p-1 z-30 w-48">
-                  {userEmail && (
-                    <div className="px-3 py-1.5 text-[11px] text-muted-foreground truncate border-b border-border/50 mb-1">{userEmail}</div>
-                  )}
-                  {onOpenSettings && (
-                    <button
-                      onClick={() => { setOpenDropdown(null); onOpenSettings() }}
-                      className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
-                    >
-                      <SettingsIcon className="w-3.5 h-3.5" /> Configuracion
-                    </button>
-                  )}
-                  {role === 'admin' && (
-                    <button
-                      onClick={() => { setOpenDropdown(null); navigate('/admin') }}
-                      className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
-                    >
-                      <ShieldIcon className="w-3.5 h-3.5" /> Admin
-                    </button>
-                  )}
-                  <ThemeToggleRow />
-                  <div className="border-t border-border/50 mt-1 pt-1">
-                    <button
-                      onClick={() => { setOpenDropdown(null); onSignOut() }}
-                      className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
-                    >
-                      <LogOutIcon className="w-3.5 h-3.5" /> Salir
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+            <ToolbarDropdown open={showProfile} onClose={() => setOpenDropdown(null)}>
+              {userEmail && (
+                <div className="px-3 py-1.5 text-[11px] text-muted-foreground truncate border-b border-border/50 mb-1">{userEmail}</div>
+              )}
+              {onOpenSettings && (
+                <button
+                  onClick={() => { setOpenDropdown(null); onOpenSettings() }}
+                  className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
+                >
+                  <SettingsIcon className="w-3.5 h-3.5" /> Configuracion
+                </button>
+              )}
+              {role === 'admin' && (
+                <button
+                  onClick={() => { setOpenDropdown(null); navigate('/admin') }}
+                  className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
+                >
+                  <ShieldIcon className="w-3.5 h-3.5" /> Admin
+                </button>
+              )}
+              <ThemeToggleRow />
+              <div className="border-t border-border/50 mt-1 pt-1">
+                <button
+                  onClick={() => { setOpenDropdown(null); onSignOut() }}
+                  className="w-full text-left px-3 py-1.5 text-sm rounded hover:bg-accent transition-colors flex items-center gap-2"
+                >
+                  <LogOutIcon className="w-3.5 h-3.5" /> Salir
+                </button>
+              </div>
+            </ToolbarDropdown>
           </div>
         )}
       </div>

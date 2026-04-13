@@ -1,4 +1,31 @@
 services:
+  # All-in-one: gateway + frontend in a single container (use for production / Railway)
+  app:
+    build:
+      context: .
+      args:
+        APP_NAME: ${APP_NAME:-minimal}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    container_name: ${APP_NAME:-minimal}
+    ports:
+      - "${PORT:-8092}:${PORT:-8092}"
+    volumes:
+      - app-data:/data
+    env_file:
+      - .env.docker
+    environment:
+      - PORT=${PORT:-8092}
+      - PROTO_APP_ROOT=/app/examples/${APP_NAME:-minimal}
+      - PROTO_APP_NAME=${APP_NAME:-minimal}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8092}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Standalone MCP HTTP server (optional, for external MCP clients)
   mcp:
     build:
       context: .
@@ -12,35 +39,11 @@ services:
       - .env.docker
     environment:
       - MCP_PORT=8093
+    profiles:
+      - mcp
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8093/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  agent:
-    build:
-      context: .
-      args:
-        APP_NAME: ${APP_NAME:-minimal}
-    container_name: ${APP_NAME:-minimal}
-    ports:
-      - "8092:8092"
-    volumes:
-      - app-data:/data
-    env_file:
-      - .env.docker
-    environment:
-      - PORT=8092
-      - PROTO_APP_ROOT=/app/examples/${APP_NAME:-minimal}
-      - PROTO_APP_NAME=${APP_NAME:-minimal}
-    depends_on:
-      mcp:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8092/health"]
       interval: 30s
       timeout: 10s
       retries: 3

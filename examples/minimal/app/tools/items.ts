@@ -6,15 +6,14 @@ export default [
     name: 'create_item',
     description: 'Create a new item.',
     schema: {
-      company_id: z.string(),
       name: z.string(),
       description: z.string().optional(),
     },
-    handler: async (args) => {
+    handler: async (args, ctx) => {
       const db = getSupabase()
       const { data, error } = await db
         .from('items')
-        .insert({ company_id: args.company_id, name: args.name, description: args.description })
+        .insert({ company_id: ctx.company_id, name: args.name, description: args.description })
         .select()
         .single()
       return error ? err(error.message) : json(data)
@@ -24,15 +23,13 @@ export default [
   defineTool({
     name: 'list_items',
     description: 'List all items for a company.',
-    schema: {
-      company_id: z.string(),
-    },
-    handler: async (args) => {
+    schema: {},
+    handler: async (_args, ctx) => {
       const db = getSupabase()
       const { data, error } = await db
         .from('items')
         .select('*')
-        .eq('company_id', args.company_id)
+        .eq('company_id', ctx.company_id!)
         .order('created_at', { ascending: false })
       return error ? err(error.message) : json(data)
     },

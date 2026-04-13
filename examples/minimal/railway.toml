@@ -5,7 +5,6 @@ dockerfilePath = "Dockerfile"
 [build.args]
 VITE_SUPABASE_URL = "${{VITE_SUPABASE_URL}}"
 VITE_SUPABASE_ANON_KEY = "${{VITE_SUPABASE_ANON_KEY}}"
-APP_NAME = "${{APP_NAME}}"
 
 [deploy]
 healthcheckPath = "/health"

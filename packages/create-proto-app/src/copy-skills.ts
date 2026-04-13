@@ -9,6 +9,7 @@ const SKILLS = [
   'proto-migration',
   'proto-debug',
   'proto-deploy',
+  'proto-update',
 ]
 
 function copyDir(src: string, dest: string): void {

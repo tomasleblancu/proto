@@ -39,10 +39,23 @@ export interface EntityCockpitWidget {
   props?: Record<string, unknown>
 }
 
+export interface EntityCockpitLayoutItem {
+  i: string
+  x: number
+  y: number
+  w: number
+  h: number
+  minW?: number
+  minH?: number
+  maxW?: number
+  maxH?: number
+  static?: boolean
+}
+
 export interface EntityCockpit {
   widgets: EntityCockpitWidget[]
-  /** react-grid-layout Layouts — opaque at this layer. */
-  layouts: Record<string, unknown>
+  /** react-grid-layout Layouts keyed by breakpoint (lg, md, sm). */
+  layouts: Partial<Record<string, readonly EntityCockpitLayoutItem[]>>
 }
 
 export interface EntityDefinition<T = Record<string, unknown>> {

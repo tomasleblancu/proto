@@ -4,8 +4,12 @@
  * `import.meta.env.VITE_*` directly, so the default values stay in sync.
  */
 
-export const GATEWAY_URL: string =
-  (import.meta.env.VITE_GATEWAY_URL as string) || 'http://localhost:8092'
+/** Origin of the gateway. When empty, uses current browser origin (all-in-one deploy). */
+const envGateway = (import.meta.env.VITE_GATEWAY_URL as string) || ''
+const browserOrigin =
+  typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8092'
+
+export const GATEWAY_URL: string = envGateway || browserOrigin
 
 export const INTERNAL_SECRET: string =
   (import.meta.env.VITE_INTERNAL_SECRET as string) || ''

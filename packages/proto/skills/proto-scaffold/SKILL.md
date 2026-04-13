@@ -124,88 +124,22 @@ export default defineWorkflow({
 ```bash
 cd <nombre>
 npm install
+
+# Configurar env
 cp .env.example .env
-```
+# Editar .env con tus credenciales de Supabase
 
-### Variables de entorno que el usuario debe configurar
-
-Después de copiar `.env.example`, el usuario necesita completar estas variables. **Indicale al usuario exactamente qué tiene que hacer:**
-
-#### 1. Crear un proyecto en Supabase (si no tiene uno)
-
-Ir a [supabase.com](https://supabase.com) → New Project. Una vez creado, ir a **Settings → API** y copiar 3 valores:
-
-| Variable en `.env` | Qué copiar desde Supabase |
-|---|---|
-| `SUPABASE_URL` | Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | `service_role` key (secret, solo backend) |
-| `SUPABASE_ANON_KEY` | `anon` key (pública, para frontend) |
-
-Estas mismas se duplican para el frontend de Vite:
-
-| Variable frontend | Mismo valor que |
-|---|---|
-| `VITE_SUPABASE_URL` | `SUPABASE_URL` |
-| `VITE_SUPABASE_ANON_KEY` | `SUPABASE_ANON_KEY` |
-
-#### 2. Generar el token de Claude
-
-```bash
-claude setup-token
-```
-
-Copiar el token resultante en `CLAUDE_SETUP_TOKEN`.
-
-#### 3. Generar un secret interno
-
-```bash
-openssl rand -hex 32
-```
-
-Pegar el resultado en **ambas** variables:
-- `INTERNAL_API_SECRET`
-- `VITE_INTERNAL_SECRET`
-
-Este secret autentica la comunicación entre el frontend y el gateway.
-
-#### 4. Variables que se pueden dejar con el default
-
-| Variable | Default | Cuándo cambiar |
-|---|---|---|
-| `PORT` | `8092` | Si el puerto está ocupado |
-| `MCP_PORT` | `8093` | Si el puerto está ocupado |
-| `VITE_GATEWAY_URL` | `http://localhost:8092` | Solo en producción |
-
-#### 5. Variables opcionales (mail)
-
-Solo si la app necesita enviar/recibir email:
-- `MAIL_SMTP_HOST`, `MAIL_SMTP_USER`, `MAIL_SMTP_PASS`, `MAIL_SMTP_FROM`
-
-### Resumen: lo mínimo que se necesita
-
-| Recurso | Valores | Cómo obtener |
-|---|---|---|
-| Proyecto Supabase | 3 (URL + service key + anon key) | [supabase.com](https://supabase.com) → Settings → API |
-| Claude token | 1 | `claude setup-token` |
-| Secret random | 1 | `openssl rand -hex 32` |
-
-**Total: 5 valores reales.** El resto son duplicados o defaults.
-
-### Aplicar migraciones y arrancar
-
-```bash
-# Aplicar migración a Supabase
+# Aplicar migración
 cd supabase && supabase db push && cd ..
 
 # Desarrollo
-npm run dev          # gateway + mcp + web (todo junto)
-npm run mcp          # MCP en modo stdio (para Claude Code CLI)
-npm run mcp:http     # MCP en modo HTTP (para Docker)
+npm run mcp        # MCP en modo stdio (para Claude Code CLI)
+npm run mcp:http   # MCP en modo HTTP (para Docker)
 ```
 
-El web frontend también se puede correr por separado:
+El web frontend se corre desde la raíz del monorepo:
 ```bash
-npm run dev:web      # → http://localhost:3002
+npm run dev:minimal-web   # → http://localhost:3002
 ```
 
 ## Siguiente nivel

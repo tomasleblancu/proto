@@ -31,10 +31,13 @@ if (!existsSync(templateDir)) {
   process.exit(1)
 }
 
-// Skills: bundled or monorepo
+// Skills: proto package (npm) > bundled > monorepo
+const protoPackageSkills = resolve(import.meta.dirname, '..', '..', '@tleblancureta', 'proto', 'skills')
 const bundledSkills = resolve(import.meta.dirname, '..', 'skills')
 const monorepoSkills = resolve(import.meta.dirname, '..', '..', '..', '.claude', 'skills')
-const skillsDir = existsSync(bundledSkills) ? bundledSkills : monorepoSkills
+const skillsDir = existsSync(protoPackageSkills) ? protoPackageSkills
+  : existsSync(bundledSkills) ? bundledSkills
+  : monorepoSkills
 
 console.log(`Creating new proto app: ${projectName}`)
 

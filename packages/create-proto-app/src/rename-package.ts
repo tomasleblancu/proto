@@ -33,6 +33,25 @@ function patchMcpName(filePath: string, name: string): void {
   writeFileSync(filePath, content)
 }
 
+function patchDeploy(targetDir: string, name: string): void {
+  // docker-compose.yml: container_name and PROTO_APP_NAME
+  const composePath = join(targetDir, 'docker-compose.yml')
+  if (existsSync(composePath)) {
+    let content = readFileSync(composePath, 'utf-8')
+    content = content.replace(/container_name: minimal/g, `container_name: ${name}`)
+    content = content.replace(/PROTO_APP_NAME=minimal/g, `PROTO_APP_NAME=${name}`)
+    writeFileSync(composePath, content)
+  }
+
+  // entrypoint.sh: default APP_NAME
+  const entrypointPath = join(targetDir, 'entrypoint.sh')
+  if (existsSync(entrypointPath)) {
+    let content = readFileSync(entrypointPath, 'utf-8')
+    content = content.replace(/PROTO_APP_NAME:-minimal/g, `PROTO_APP_NAME:-${name}`)
+    writeFileSync(entrypointPath, content)
+  }
+}
+
 export function renamePackage(targetDir: string, name: string): void {
   const webSuffix = `${name}-web`
 
@@ -42,4 +61,5 @@ export function renamePackage(targetDir: string, name: string): void {
   patchTitle(join(targetDir, 'web', 'index.html'), name)
   patchMcpName(join(targetDir, 'app', 'mcp.ts'), name)
   patchMcpName(join(targetDir, 'app', 'mcp-http.ts'), name)
+  patchDeploy(targetDir, name)
 }

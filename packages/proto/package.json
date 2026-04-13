@@ -1,6 +1,6 @@
 {
   "name": "@tleblancureta/proto",
-  "version": "0.3.1",
+  "version": "0.9.0",
   "type": "module",
   "description": "TypeScript framework for building AI-agent-driven apps. Define tools, widgets, and data models — get chat, Shell dashboard, auth, MCP server, and Claude CLI integration.",
   "license": "MIT",
@@ -27,9 +27,14 @@
       "default": "./dist/gateway.js"
     }
   },
+  "bin": {
+    "proto-sync-skills": "./bin/sync-skills.mjs"
+  },
   "files": [
     "dist/",
-    "core-web/src/"
+    "core-web/src/",
+    "skills/",
+    "bin/"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -53,6 +58,7 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.14.0",
     "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "ws": "^8.20.0",
     "yaml": "^2.7.0",

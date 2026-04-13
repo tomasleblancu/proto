@@ -1,7 +1,8 @@
 import { GATEWAY_URL, INTERNAL_SECRET as SECRET, WS_URL } from './config.js'
+import { toast } from 'sonner'
 
 export interface StreamEvent {
-  type: 'init' | 'text' | 'tool_use' | 'tool_result' | 'result' | 'error' | 'thinking' | 'auth' | 'pong' | 'shell_refresh'
+  type: 'init' | 'text' | 'tool_use' | 'tool_result' | 'result' | 'error' | 'thinking' | 'auth' | 'pong' | 'shell_refresh' | 'shell_toast'
   text?: string
   tool?: string
   args?: Record<string, unknown>
@@ -62,6 +63,16 @@ class ProtoSocket {
 
           if (event.type === 'shell_refresh') {
             this.shellRefreshHandler?.()
+            return
+          }
+
+          if (event.type === 'shell_toast') {
+            const variant = (event as any).variant || 'info'
+            const title = (event as any).title || event.text || ''
+            const description = (event as any).description
+            if (variant === 'success') toast.success(title, { description })
+            else if (variant === 'error') toast.error(title, { description })
+            else toast(title, { description })
             return
           }
 

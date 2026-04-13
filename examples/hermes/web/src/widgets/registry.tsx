@@ -139,7 +139,7 @@ export const WIDGETS = [
     defaultSize: { w: 4, h: 5, minW: 3, minH: 3 },
     render: (instance, ctx) => (
       <OrderDetailWidget
-        orderId={instance.props?.orderId}
+        orderId={(instance.props?.orderId as string) ?? ''}
         onSendToChat={ctx.onSendToChat}
       />
     ),

@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n gw,mcp,web -c blue,green,yellow \"tsx watch app/gateway.ts\" \"tsx watch app/mcp-http.ts\" \"cd web && npm run dev\"",
-    "mcp": "tsx app/mcp.ts",
-    "mcp:http": "tsx app/mcp-http.ts",
-    "gateway": "tsx app/gateway.ts",
-    "dev:gateway": "tsx watch app/gateway.ts"
+    "dev": "concurrently -n gw,mcp,web -c blue,green,yellow \"tsx watch --env-file=.env app/gateway.ts\" \"tsx watch --env-file=.env app/mcp-http.ts\" \"cd web && npm run dev\"",
+    "mcp": "tsx --env-file=.env app/mcp.ts",
+    "mcp:http": "tsx --env-file=.env app/mcp-http.ts",
+    "gateway": "tsx --env-file=.env app/gateway.ts",
+    "dev:gateway": "tsx watch --env-file=.env app/gateway.ts",
+    "postinstall": "proto-sync-skills"
   },
   "dependencies": {
-    "@tleblancureta/proto": "^0.3.0",
+    "@tleblancureta/proto": "^0.6.0",
     "@modelcontextprotocol/sdk": "^1.27.0",
     "@supabase/supabase-js": "^2.49.0",
     "zod": "^3.24.0"

@@ -1,13 +1,16 @@
-import { useState, useCallback, useRef, useMemo, type ReactNode } from 'react'
+import { useState, useCallback, useRef, useMemo, useEffect, memo, type ReactNode } from 'react'
 import { useMountEffect } from '../hooks/useMountEffect.js'
-import { ResponsiveGridLayout, type Layout } from 'react-grid-layout'
+import { ResponsiveGridLayout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
-import { XIcon } from 'lucide-react'
+import { XIcon, Maximize2Icon, Minimize2Icon } from 'lucide-react'
 import { loadShellState, saveShellState, clearShellState } from './shell/persistence.js'
 import { Toolbar } from './shell/Toolbar.js'
 import { FocusView } from './shell/FocusView.js'
 import { EmptyState } from './shell/EmptyState.js'
-import type { ActiveEntity, WidgetInstance, WidgetType } from './shell/types.js'
+import { CommandPalette, type CommandItem } from './CommandPalette.js'
+import { useCommandPalette } from '../hooks/useCommandPalette.js'
+import { WidgetErrorBoundary } from './shell/WidgetErrorBoundary.js'
+import type { ActiveEntity, GridLayouts, LayoutItem, WidgetInstance, WidgetType } from './shell/types.js'
 import type { ShellContext, WidgetRegistry } from '../lib/define-widget.js'
 
 export type { WidgetType, ActiveEntity } from './shell/types.js'
@@ -28,14 +31,14 @@ function useContainerWidth(ref: React.RefObject<HTMLDivElement | null>) {
 
 export interface CockpitDefinition {
   widgets: WidgetInstance[]
-  layouts: any
+  layouts: GridLayouts
 }
 
 interface Props {
   // Widget registry + layouts (app-provided)
   widgets: WidgetRegistry
   defaultWidgets: WidgetInstance[]
-  defaultLayouts: any
+  defaultLayouts: GridLayouts
   /** Cockpit definitions keyed by activeEntity.type. */
   cockpits?: Record<string, CockpitDefinition>
 
@@ -90,55 +93,63 @@ export default function Shell({
   const [localRefresh, setLocalRefresh] = useState(0)
   const effectiveRefreshKey = refreshKey + localRefresh
 
-  const saved = loadShellState()
-  const [widgets, setWidgets] = useState<WidgetInstance[]>(saved?.widgets || defaultWidgets)
-  const [layouts, setLayouts] = useState<any>(saved?.layouts || { ...defaultLayouts })
+  const [maximizedWidgetId, setMaximizedWidgetId] = useState<string | null>(null)
+
+  // Escape to exit maximized mode
+  useEffect(() => {
+    if (!maximizedWidgetId) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMaximizedWidgetId(null)
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [maximizedWidgetId])
+
+  const [widgets, setWidgets] = useState<WidgetInstance[]>(() => {
+    const saved = loadShellState(companyId)
+    return saved?.widgets || defaultWidgets
+  })
+  const [layouts, setLayouts] = useState<GridLayouts>(() => {
+    const saved = loadShellState(companyId)
+    return saved?.layouts || { ...defaultLayouts }
+  })
 
   const addWidget = useCallback((type: WidgetType) => {
-    const id = `${type}-${Date.now()}`
+    const id = `${type}-${crypto.randomUUID().slice(0, 8)}`
     const def = widgetRegistry.get(type)
     const size = def?.defaultSize || { w: 3, h: 4, minW: 2, minH: 3 }
     const widget: WidgetInstance = { id, type, title: def?.title || type }
 
     setWidgets(prev => [...prev, widget])
-    setLayouts((prev: any) => {
-      const next = { ...prev, lg: [...(prev.lg || []), { i: id, x: 0, y: Infinity, ...size }] }
-      return next
-    })
+    setLayouts(prev => ({
+      ...prev,
+      lg: [...(prev.lg || []), { i: id, x: 0, y: Infinity, ...size }],
+    }))
   }, [widgetRegistry])
 
   const removeWidget = useCallback((id: string) => {
+    setMaximizedWidgetId(prev => prev === id ? null : prev)
     setWidgets(prev => prev.filter(w => w.id !== id))
-    setLayouts((prev: any) => ({
+    setLayouts(prev => ({
       ...prev,
-      lg: (prev.lg || []).filter((l: any) => l.i !== id),
+      lg: (prev.lg || []).filter(l => l.i !== id),
     }))
   }, [])
 
   const resetShell = useCallback(() => {
-    clearShellState()
+    clearShellState(companyId)
     setWidgets([...defaultWidgets])
     setLayouts({ ...defaultLayouts })
-  }, [defaultWidgets, defaultLayouts])
+  }, [defaultWidgets, defaultLayouts, companyId])
 
-  const widgetsRef = useRef(widgets)
-  widgetsRef.current = widgets
-  const layoutsRef = useRef(layouts)
-  layoutsRef.current = layouts
+  // Persist widgets whenever the list changes
+  useEffect(() => {
+    saveShellState(widgets, layouts, companyId)
+  }, [widgets])
 
-  const persistState = useCallback(() => {
-    saveShellState(widgetsRef.current, layoutsRef.current)
-  }, [])
-
-  const prevWidgetCount = useRef(widgets.length)
-  if (widgets.length !== prevWidgetCount.current) {
-    prevWidgetCount.current = widgets.length
-    persistState()
-  }
-
-  function onLayoutChange(_layout: any, allLayouts: any) {
+  function onLayoutChange(_layout: readonly LayoutItem[], allLayouts: GridLayouts) {
     setLayouts(allLayouts)
-    saveShellState(widgetsRef.current, allLayouts)
+    saveShellState(widgets, allLayouts, companyId)
   }
 
   const triggerLocalRefresh = useCallback(() => setLocalRefresh(k => k + 1), [])
@@ -160,11 +171,14 @@ export default function Shell({
   ])
 
   function renderWidget(widget: WidgetInstance) {
-    const def = widgetRegistry.get(widget.type)
-    if (!def) {
-      return <p className="text-xs text-muted-foreground p-2">Widget "{widget.type}" not found.</p>
-    }
-    return def.render(widget, shellCtx)
+    return (
+      <MemoizedWidget
+        key={widget.id}
+        widget={widget}
+        registry={widgetRegistry}
+        ctx={shellCtx}
+      />
+    )
   }
 
   const widgetCatalog = useMemo(
@@ -173,6 +187,19 @@ export default function Shell({
       .map(w => ({ type: w.type, title: w.title, icon: w.icon || '▦' })),
     [widgetRegistry]
   )
+
+  const { open: cmdOpen, close: cmdClose } = useCommandPalette()
+
+  const commandItems = useMemo<CommandItem[]>(() => [
+    ...Array.from(widgetRegistry.values()).map(w => ({
+      id: `widget-${w.type}`,
+      label: w.title,
+      icon: w.icon,
+      category: 'Widgets',
+      description: `Abrir widget ${w.title}`,
+      action: () => addWidget(w.type),
+    })),
+  ], [widgetRegistry, addWidget])
 
   return (
     <div ref={containerRef} id="shell-root" className="h-full overflow-y-auto scrollbar-thin bg-background dotted-bg relative">
@@ -196,6 +223,37 @@ export default function Shell({
         userEmail={userEmail}
         rightActions={toolbarExtras}
       />
+
+      {maximizedWidgetId && (() => {
+        const widget = widgets.find(w => w.id === maximizedWidgetId)
+        if (!widget) return null
+        return (
+          <div className="absolute inset-0 top-[41px] z-10 bg-background flex flex-col">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-card">
+              <span className="text-sm font-medium text-muted-foreground select-none">{widget.title}</span>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={() => setMaximizedWidgetId(null)}
+                  className="p-1 -m-1 text-muted-foreground/40 hover:text-foreground transition-colors"
+                  aria-label="Restaurar widget"
+                >
+                  <Minimize2Icon className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => { setMaximizedWidgetId(null); removeWidget(widget.id) }}
+                  className="p-1 -m-1 text-muted-foreground/40 hover:text-foreground transition-colors"
+                  aria-label="Cerrar widget"
+                >
+                  <XIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto scrollbar-thin p-3 shell-content">
+              {renderWidget(widget)}
+            </div>
+          </div>
+        )
+      })()}
 
       {focusMode && agentView && (
         <FocusView
@@ -236,8 +294,8 @@ export default function Shell({
         <EmptyState onAddWidget={addWidget} widgetCatalog={widgetCatalog} />
       )}
 
-      {!focusMode && (
-        <div className={cockpitMode ? 'hidden' : ''}>
+      {!focusMode && !cockpitMode && (
+        <div>
           <ResponsiveGridLayout
             className="p-2"
             width={containerWidth - 16}
@@ -253,13 +311,22 @@ export default function Shell({
               <div key={widget.id} className="bg-card border border-border rounded-lg overflow-hidden flex flex-col">
                 <div className="widget-drag-handle flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-card cursor-grab active:cursor-grabbing">
                   <span className="text-sm font-medium text-muted-foreground select-none">{widget.title}</span>
-                  <button
-                    onClick={() => removeWidget(widget.id)}
-                    className="p-1 -m-1 text-muted-foreground/40 hover:text-foreground transition-colors"
-                    aria-label="Cerrar widget"
-                  >
-                    <XIcon className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-0.5">
+                    <button
+                      onClick={() => setMaximizedWidgetId(widget.id)}
+                      className="p-1 -m-1 text-muted-foreground/40 hover:text-foreground transition-colors"
+                      aria-label="Maximizar widget"
+                    >
+                      <Maximize2Icon className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => removeWidget(widget.id)}
+                      className="p-1 -m-1 text-muted-foreground/40 hover:text-foreground transition-colors"
+                      aria-label="Cerrar widget"
+                    >
+                      <XIcon className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-thin p-2 shell-content">
                   {renderWidget(widget)}
@@ -270,7 +337,28 @@ export default function Shell({
         </div>
       )}
 
+      <CommandPalette items={commandItems} open={cmdOpen} onClose={cmdClose} />
       {overlays}
     </div>
   )
 }
+
+const MemoizedWidget = memo(function MemoizedWidget({
+  widget,
+  registry,
+  ctx,
+}: {
+  widget: WidgetInstance
+  registry: WidgetRegistry
+  ctx: ShellContext
+}) {
+  const def = registry.get(widget.type)
+  if (!def) {
+    return <p className="text-xs text-muted-foreground p-2">Widget "{widget.type}" not found.</p>
+  }
+  return (
+    <WidgetErrorBoundary widgetType={widget.type}>
+      {def.render(widget, ctx)}
+    </WidgetErrorBoundary>
+  )
+})

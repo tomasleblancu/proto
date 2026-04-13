@@ -17,7 +17,7 @@
  *     return <ProtoApp widgets={widgets} />
  *   }
  */
-import { useState, useCallback, useRef, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Shell, { type CockpitDefinition } from './components/Shell.js'
 import { AdminPanel } from './components/admin/AdminPanel.js'
@@ -25,9 +25,10 @@ import { LoginForm } from './components/LoginForm.js'
 import { useAuth } from './hooks/useAuth.js'
 import { useTheme } from './hooks/useTheme.js'
 import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget.js'
-import { protoSocket } from './lib/api.js'
+import { protoSocket, sendChatWs } from './lib/api.js'
+import { Toaster } from './components/ui/toaster.js'
 import type { EntityDefinition } from '../../core-shared/src/index.js'
-import type { ActiveEntity, WidgetInstance } from './components/shell/types.js'
+import type { ActiveEntity, GridLayouts, WidgetInstance } from './components/shell/types.js'
 
 export interface ProtoAppProps {
   /** Widget definitions — the core of your app's UI. */
@@ -40,7 +41,7 @@ export interface ProtoAppProps {
   defaultWidgets?: WidgetInstance[]
 
   /** Default grid layouts. If omitted, auto-generates a simple grid. */
-  defaultLayouts?: Record<string, unknown[]>
+  defaultLayouts?: GridLayouts
 
   /** App display name (shown in header). */
   appName?: string
@@ -61,7 +62,6 @@ export function ProtoApp({
 
   const { user, role, companyId, companies, profile, loading, signOut, setCompanyId } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
-  const chatSendRef = useRef<((msg: string) => void) | null>(null)
 
   type Entity = { type: string; id: string; label: string }
   const [activeEntity, setActiveEntity] = useState<Entity | null>(null)
@@ -73,7 +73,7 @@ export function ProtoApp({
     Object.fromEntries(
       entities
         .filter(e => !!e.cockpit)
-        .map(e => [e.name, { widgets: e.cockpit!.widgets, layouts: e.cockpit!.layouts }])
+        .map(e => [e.name, { widgets: e.cockpit!.widgets, layouts: e.cockpit!.layouts as GridLayouts }])
     ), [entities])
 
   // Auto-generate defaults from general widgets if not provided
@@ -93,8 +93,8 @@ export function ProtoApp({
   }, [defaultWidgets, defaultLayoutsProp])
 
   const onSendToChat = useCallback((message: string) => {
-    chatSendRef.current?.(message)
-  }, [])
+    sendChatWs({ company_id: companyId || '', user_id: user?.id || '', message })
+  }, [companyId, user?.id])
 
   const activateEntity = useCallback((e: ActiveEntity) => {
     setActiveEntity(e as Entity)
@@ -116,51 +116,64 @@ export function ProtoApp({
     })
   }, [])
 
-  // WebSocket setup
-  const wsSetup = useRef(false)
-  if (!wsSetup.current && user) {
-    wsSetup.current = true
+  // WebSocket setup — connect once when user is authenticated
+  useEffect(() => {
+    if (!user) return
     protoSocket.connect().catch(() => {})
     protoSocket.onShellRefresh(() => setRefreshKey(k => k + 1))
-  }
+    return () => protoSocket.disconnect()
+  }, [!!user])
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center text-muted-foreground">Loading...</div>
+    return (
+      <>
+        <div className="flex h-screen items-center justify-center text-muted-foreground">Loading...</div>
+        <Toaster />
+      </>
+    )
   }
 
   if (!user) {
-    return <LoginComponent />
+    return (
+      <>
+        <LoginComponent />
+        <Toaster />
+      </>
+    )
   }
 
   const effectiveCompanyId = companyId || user.id
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/admin" element={<AdminPanel widgets={widgetRegistry} />} />
-        <Route path="*" element={
-          <Shell
-            widgets={widgetRegistry}
-            defaultWidgets={defaultWidgets}
-            defaultLayouts={defaultLayouts}
-            cockpits={cockpits}
-            companyId={effectiveCompanyId}
-            refreshKey={refreshKey}
-            onSendToChat={onSendToChat}
-            activeEntity={activeEntity}
-            onActivateEntity={activateEntity}
-            onDeactivateEntity={() => setActiveEntity(null)}
-            openEntities={openEntities}
-            onCloseTab={closeEntityTab}
-            role={role}
-            companies={companies}
-            effectiveCompanyId={effectiveCompanyId}
-            setCompanyId={setCompanyId}
-            onSignOut={signOut}
-            userEmail={profile?.full_name || user.email || ''}
-          />
-        } />
-      </Routes>
-    </BrowserRouter>
+    <>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/admin" element={<AdminPanel widgets={widgetRegistry} />} />
+          <Route path="*" element={
+            <Shell
+              widgets={widgetRegistry}
+              defaultWidgets={defaultWidgets}
+              defaultLayouts={defaultLayouts}
+              cockpits={cockpits}
+              companyId={effectiveCompanyId}
+              refreshKey={refreshKey}
+              onSendToChat={onSendToChat}
+              activeEntity={activeEntity}
+              onActivateEntity={activateEntity}
+              onDeactivateEntity={() => setActiveEntity(null)}
+              openEntities={openEntities}
+              onCloseTab={closeEntityTab}
+              role={role}
+              companies={companies}
+              effectiveCompanyId={effectiveCompanyId}
+              setCompanyId={setCompanyId}
+              onSignOut={signOut}
+              userEmail={profile?.full_name || user.email || ''}
+            />
+          } />
+        </Routes>
+      </BrowserRouter>
+      <Toaster />
+    </>
   )
 }

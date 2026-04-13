@@ -28,7 +28,7 @@ if (existsSync(templateSrc)) {
 // Bundle skills
 const SKILLS = [
   'proto-tool', 'proto-widget', 'proto-entity', 'proto-workflow',
-  'proto-migration', 'proto-debug', 'proto-deploy',
+  'proto-migration', 'proto-debug', 'proto-deploy', 'proto-update',
 ]
 const skillsSrc = resolve(monoRoot, '.claude', 'skills')
 const skillsDest = resolve(pkgRoot, 'skills')
