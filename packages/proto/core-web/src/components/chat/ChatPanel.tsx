@@ -371,7 +371,7 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
           )}
           <ChatInput
             onSend={handleSend}
-            placeholder={streaming ? 'Agent working — your message will be queued...' : 'Type a message...'}
+            placeholder={streaming ? 'Agent working...' : 'Type a message...'}
             streaming={streaming}
             onCancel={() => {
               setStreaming(false)
