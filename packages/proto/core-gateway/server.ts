@@ -13,7 +13,9 @@ import { registerGmailRoutes } from './routes/gmail.js'
 import { registerHealthRoutes } from './routes/health.js'
 import { registerCronRoutes } from './routes/cron.js'
 import { registerAdminRoutes } from './routes/admin.js'
+import { registerWhatsAppRoutes } from './routes/whatsapp.js'
 import { startMailIngester } from './mail-ingester.js'
+import { startWhatsAppChannel } from './whatsapp-kapso.js'
 
 export interface GatewayOptions {
   /** Override the port (default: PORT env or 8090). */
@@ -47,6 +49,7 @@ export async function createProtoGateway(opts?: GatewayOptions) {
   registerHealthRoutes(app)
   registerCronRoutes(app)
   registerAdminRoutes(app)
+  registerWhatsAppRoutes(app)
 
   // Serve frontend static files if web/dist exists (all-in-one deploy)
   const webDistRel = resolve(APP_ROOT, 'web/dist').replace(process.cwd() + '/', '')
@@ -66,8 +69,9 @@ export async function createProtoGateway(opts?: GatewayOptions) {
   const server = serve({ fetch: app.fetch, port })
   injectWebSocket(server)
 
-  // Start the IMAP ingester (no-op if MAIL_IMAP_HOST not configured)
+  // Start external channel ingesters (no-op if not configured)
   startMailIngester()
+  startWhatsAppChannel()
 
   return { app, server }
 }

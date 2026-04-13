@@ -151,6 +151,23 @@ docker compose up -d --build agent
 | `HERMES_SMTP_*` | SMTP config para mail channel |
 | `HERMES_IMAP_*` | IMAP config para mail ingestion |
 
+### WhatsApp via Kapso (opcional)
+
+| Variable | Descripción |
+|---|---|
+| `KAPSO_API_URL` | URL base de Kapso (ej: `https://api.kapso.ai`) |
+| `KAPSO_API_KEY` | API key de Kapso Platform |
+| `KAPSO_WEBHOOK_SECRET` | Secret para verificar signatures de webhooks |
+| `KAPSO_PHONE_NUMBER_ID` | Phone number ID de WhatsApp Business |
+| `KAPSO_DEFAULT_COMPANY_ID` | Company ID fallback si no hay tabla `whatsapp_companies` |
+
+Si `KAPSO_API_URL` no está seteado, el canal WhatsApp es no-op. Para activarlo:
+
+1. Obtener API key y webhook secret desde el dashboard de Kapso
+2. Configurar un webhook en Kapso apuntando a `https://<gateway-url>/whatsapp/webhook`
+3. Seleccionar evento `whatsapp.message.received`
+4. Para multi-tenant: crear tabla `whatsapp_companies` (phone_number → company_id)
+
 ## Railway
 
 ### railway.toml

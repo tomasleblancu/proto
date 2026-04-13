@@ -113,6 +113,13 @@ export const config = loadConfig()
 
 // Gateway env vars
 export const INTERNAL_SECRET = process.env.INTERNAL_API_SECRET || ''
+
+// Kapso (WhatsApp) env vars — no-op if not set
+export const KAPSO_API_URL = process.env.KAPSO_API_URL || ''
+export const KAPSO_API_KEY = process.env.KAPSO_API_KEY || ''
+export const KAPSO_WEBHOOK_SECRET = process.env.KAPSO_WEBHOOK_SECRET || ''
+export const KAPSO_PHONE_NUMBER_ID = process.env.KAPSO_PHONE_NUMBER_ID || ''
+export const KAPSO_DEFAULT_COMPANY_ID = process.env.KAPSO_DEFAULT_COMPANY_ID || ''
 export const MAX_TURNS = parseInt(process.env.CLAUDE_MAX_TURNS || '25', 10)
 export const TIMEOUT_SECONDS = parseInt(process.env.CLAUDE_TIMEOUT || '120', 10)
 export const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6'
