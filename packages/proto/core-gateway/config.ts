@@ -63,7 +63,10 @@ export function resolveAppPath(relative: string): string {
  * Priority: DATA_DIR env > /data (Docker volume) > APP_ROOT/.proto-data (dev).
  */
 function resolveDataDir(): string {
-  if (process.env.DATA_DIR) return process.env.DATA_DIR
+  if (process.env.DATA_DIR) {
+    const raw = process.env.DATA_DIR
+    return isAbsolute(raw) ? raw : resolve(APP_ROOT, raw)
+  }
   if (existsSync('/data')) return '/data'
   return resolve(APP_ROOT, '.proto-data')
 }
