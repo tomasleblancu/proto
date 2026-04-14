@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync, existsSync, readdirSync, copyFileSync, statSy
 import { resolve, join } from 'node:path'
 import { createHash } from 'node:crypto'
 import type { ChatRequest } from '@tleblancureta/proto/shared'
-import { config } from './config.js'
+import { config, DATA_DIR } from './config.js'
 import { buildSystemPrompt } from './skills.js'
 import { loadSkills, loadAgents, type Skill, type Agent } from './registry.js'
 
@@ -26,18 +26,17 @@ interface SessionResult {
 
 export async function prepareSession(request: ChatRequest): Promise<SessionResult> {
   const sessionId = getSessionId(request.company_id, request.session_key)
-  const dataRoot = process.env.DATA_DIR || '/data'
 
   const sessionSlug = request.session_key
     ? `${request.company_id}/${request.session_key}`
     : request.company_id
 
-  const sessionDir = resolve(dataRoot, 'sessions', sessionSlug)
+  const sessionDir = resolve(DATA_DIR, 'sessions', sessionSlug)
   mkdirSync(sessionDir, { recursive: true })
 
   // Claude config dir: use per-session dir in Docker, default (~/.claude) in local dev
   const claudeConfigDir = process.env.CLAUDE_CONFIG_DIR
-    ? resolve(dataRoot, 'claude-config', sessionSlug)
+    ? resolve(DATA_DIR, 'claude-config', sessionSlug)
     : join(process.env.HOME || '', '.claude')
 
   if (process.env.CLAUDE_CONFIG_DIR) {

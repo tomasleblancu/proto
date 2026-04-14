@@ -245,6 +245,7 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
         const form = new FormData()
         form.append('file', att.file)
         form.append('company_id', companyId)
+        form.append('session_key', sessionKey)
         try {
           const res = await fetch(`${GATEWAY_URL}/upload`, {
             method: 'POST',

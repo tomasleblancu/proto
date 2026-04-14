@@ -57,9 +57,9 @@ export function registerChatRoutes(app: Hono, upgradeWebSocket: UpgradeWebSocket
     try {
       const { join, resolve } = await import('node:path')
       const { existsSync, rmSync } = await import('node:fs')
-      const dataRoot = process.env.DATA_DIR || '/data'
+      const { DATA_DIR } = await import('../config.js')
       const slug = sessionKey ? `${companyId}/${sessionKey}` : companyId
-      const sessionDir = resolve(dataRoot, 'sessions', slug)
+      const sessionDir = resolve(DATA_DIR, 'sessions', slug)
       const file = join(sessionDir, '.claude-session-id')
       if (existsSync(file)) rmSync(file, { force: true })
       return c.json({ ok: true })

@@ -1,4 +1,5 @@
 import type { Hono } from 'hono'
+import { DATA_DIR } from '../config.js'
 
 /**
  * Upload route: persists uploaded files to the per-session data dir so the
@@ -13,8 +14,7 @@ export function registerUploadRoutes(app: Hono) {
 
     if (!file || !companyId) return c.json({ error: 'file and company_id required' }, 400)
 
-    const dataRoot = process.env.DATA_DIR || '/data'
-    const sessionDir = `${dataRoot}/sessions/${companyId}/${sessionKey}`
+    const sessionDir = `${DATA_DIR}/sessions/${companyId}/${sessionKey}`
     const { mkdirSync, writeFileSync } = await import('node:fs')
     mkdirSync(sessionDir, { recursive: true })
 

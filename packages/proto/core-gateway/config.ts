@@ -58,6 +58,18 @@ export function resolveAppPath(relative: string): string {
   return isAbsolute(relative) ? relative : resolve(APP_ROOT, relative)
 }
 
+/**
+ * Resolve the data directory for session files, uploads, Claude configs.
+ * Priority: DATA_DIR env > /data (Docker volume) > APP_ROOT/.proto-data (dev).
+ */
+function resolveDataDir(): string {
+  if (process.env.DATA_DIR) return process.env.DATA_DIR
+  if (existsSync('/data')) return '/data'
+  return resolve(APP_ROOT, '.proto-data')
+}
+
+export const DATA_DIR = resolveDataDir()
+
 function loadConfig(): ProjectConfig {
   const configPath = process.env.PROJECT_CONFIG || 'project.yaml'
   const resolved = resolveAppPath(configPath)
