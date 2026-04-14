@@ -6,9 +6,13 @@ import { prepareSession, syncCredentialsBack } from './session.js'
 import type { ChatRequest, ChatResponse, SSEEvent } from '@tleblancureta/proto/shared'
 
 function buildAllowedTools(): string {
-  const baseTools = ['Bash', 'Read']
+  // Read is needed to process uploaded file attachments (the gateway writes them to a
+  // session path and appends a Read instruction to the message).
+  // Bash and other built-in tools are NOT included — the agent should only use MCP tools.
+  const baseTools = ['Read']
   const mcpTools = Object.keys(config.mcp_servers).map(name => `mcp__${name}`)
-  return [...baseTools, ...mcpTools].join(',')
+  const extra = config.always_allowed_tools || []
+  return [...baseTools, ...mcpTools, ...extra].join(',')
 }
 
 function prependTimestamp(message: string): string {
