@@ -173,6 +173,7 @@ npm run gateway          # Hono gateway (port 8092)
 - **Auto-discovery** — drop files in the right directory, they load. No manual registration.
 - **UUIDs everywhere** — `gen_random_uuid()` for all primary keys
 - **Multi-tenant** — every domain table has `company_id`
+- **Cambios al framework `@tleblancureta/proto` requieren plan, no ejecución** — si un cambio o bug fix tiene relación directa con el package proto (core-mcp, core-web, core-shared, core-gateway), NO ejecutar el cambio. En su lugar, generar una planificación detallada (qué archivo del package tocar, qué cambio hacer, por qué, qué impacto tiene) y compartirla con el usuario para que él la aplique en el repo del framework. Los cambios en la app (tools, widgets, entities, workflows, migrations, skills) sí se ejecutan normalmente.
 
 ## Supabase conventions
 
