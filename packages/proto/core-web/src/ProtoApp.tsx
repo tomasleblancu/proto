@@ -30,6 +30,7 @@ import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget.
 import { protoSocket, sendChatWs } from './lib/api.js'
 import { ChatPanel } from './components/chat/ChatPanel.js'
 import { Toaster } from './components/ui/toaster.js'
+import { AppSkeleton } from './components/AppSkeleton.js'
 import type { EntityDefinition } from '../../core-shared/src/index.js'
 import type { ActiveEntity, GridLayouts, WidgetInstance } from './components/shell/types.js'
 
@@ -204,7 +205,7 @@ export function ProtoApp({
   if (loading) {
     return (
       <>
-        <div className="flex h-screen items-center justify-center text-muted-foreground">Loading...</div>
+        <AppSkeleton />
         <Toaster />
       </>
     )
