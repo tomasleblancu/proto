@@ -18,6 +18,7 @@
  *   }
  */
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Shell, { type CockpitDefinition } from './components/Shell.js'
 import { AdminPanel } from './components/admin/AdminPanel.js'
@@ -83,6 +84,20 @@ function defaultBuildCompanyContext({ companyId, companies, profile, role, activ
   return lines.length > 0 ? lines.join('\n') : 'Sin empresa configurada'
 }
 
+const queryClient = new QueryClient()
+
+const SESSION_KEY_ENTITY = 'proto:activeEntity'
+const SESSION_KEY_OPEN = 'proto:openEntities'
+
+function readSession<T>(key: string, fallback: T): T {
+  try {
+    const raw = sessionStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+
 export function ProtoApp({
   widgets: widgetDefs,
   entities = [],
@@ -98,8 +113,20 @@ export function ProtoApp({
   const [refreshKey, setRefreshKey] = useState(0)
 
   type Entity = { type: string; id: string; label: string }
-  const [activeEntity, setActiveEntity] = useState<Entity | null>(null)
-  const [openEntities, setOpenEntities] = useState<Entity[]>([])
+  const [activeEntity, setActiveEntity] = useState<Entity | null>(() =>
+    readSession<Entity | null>(SESSION_KEY_ENTITY, null)
+  )
+  const [openEntities, setOpenEntities] = useState<Entity[]>(() =>
+    readSession<Entity[]>(SESSION_KEY_OPEN, [])
+  )
+
+  useEffect(() => {
+    sessionStorage.setItem(SESSION_KEY_ENTITY, JSON.stringify(activeEntity))
+  }, [activeEntity])
+
+  useEffect(() => {
+    sessionStorage.setItem(SESSION_KEY_OPEN, JSON.stringify(openEntities))
+  }, [openEntities])
 
   const widgetRegistry = useMemo(() => buildWidgetRegistry(widgetDefs), [widgetDefs])
 
@@ -193,7 +220,7 @@ export function ProtoApp({
   }
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
           <Route path="/admin" element={<AdminPanel widgets={widgetRegistry} />} />
@@ -238,6 +265,6 @@ export function ProtoApp({
         </Routes>
       </BrowserRouter>
       <Toaster />
-    </>
+    </QueryClientProvider>
   )
 }

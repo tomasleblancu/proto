@@ -31,6 +31,7 @@ export {
 export type { ActiveEntity, GridLayouts, LayoutItem, WidgetInstance, WidgetType } from './components/shell/types.js'
 
 // Hooks
+export { useQueryClient } from '@tanstack/react-query'
 export { useAuth } from './hooks/useAuth.js'
 export { useCommandPalette } from './hooks/useCommandPalette.js'
 export { useData } from './hooks/useData.js'

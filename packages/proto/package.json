@@ -1,6 +1,6 @@
 {
   "name": "@tleblancureta/proto",
-  "version": "0.14.14",
+  "version": "0.14.15",
   "type": "module",
   "description": "TypeScript framework for building AI-agent-driven apps. Define tools, widgets, and data models — get chat, Shell dashboard, auth, MCP server, and Claude CLI integration.",
   "license": "MIT",
@@ -52,6 +52,7 @@
   "dependencies": {
     "@hono/node-server": "^1.13.0",
     "@hono/node-ws": "^1.3.0",
+    "@tanstack/react-query": "^5.99.0",
     "clsx": "^2.1.1",
     "croner": "^9.1.0",
     "hono": "^4.7.0",
