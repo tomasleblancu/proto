@@ -87,7 +87,7 @@ export function AdminPanel({ widgets }: AdminPanelProps) {
 function UsersTab() {
   const [search, setSearch] = useState('')
 
-  const { data: users } = useData(async () => {
+  const { data: users } = useData('admin-users', async () => {
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, full_name, role_title, onboarding_completed')
@@ -182,7 +182,7 @@ function UsersTab() {
 /* ── Companies Tab ─────────────────────────────────────── */
 
 function CompaniesTab() {
-  const { data: companies } = useData(async () => {
+  const { data: companies } = useData('admin-companies', async () => {
     const { data } = await supabase
       .from('companies')
       .select('id, name, owner_id, created_at')

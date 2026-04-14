@@ -21,6 +21,7 @@ export function useWidgetSettings<T extends Record<string, unknown>>(
   const [optimistic, setOptimistic] = useState<Partial<T> | null>(null)
 
   const { data: dbSettings, loading, error } = useData<Partial<T>>(
+    'widget-settings',
     async () => {
       const { data } = await supabase
         .from('widget_settings')

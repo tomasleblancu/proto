@@ -12,7 +12,7 @@ interface McpMeta {
 }
 
 export function SystemTab() {
-  const { data: meta } = useData<McpMeta | null>(async () => {
+  const { data: meta } = useData<McpMeta | null>('admin-system-meta', async () => {
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (INTERNAL_SECRET) headers['X-Internal-Secret'] = INTERNAL_SECRET

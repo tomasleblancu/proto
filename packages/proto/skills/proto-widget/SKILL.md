@@ -38,10 +38,10 @@ interface Props {
 }
 
 export default function OrdersWidget({ companyId, refreshKey, onSelectOrder, onSendToChat, onCreateOrder }: Props) {
-  const { data: orders } = useData(async (signal) => {
+  const { data: orders } = useData('orders', async (signal) => {
     const res = await fetch(`/api/orders?company=${companyId}`, { signal })
     return res.json()
-  }, [companyId, refreshKey])
+  }, [companyId, refreshKey], [])
 
   return (
     <div className="p-2">
@@ -210,7 +210,7 @@ defineWidget({
 
 - [ ] Componente React en `web/src/widgets/<Name>Widget.tsx`
 - [ ] Props explícitos, sin leer context global
-- [ ] `useData(fetcher, [deps, refreshKey])` en vez de `useEffect`
+- [ ] `useData('name', fetcher, [deps, refreshKey], initial)` en vez de `useEffect`
 - [ ] `export default defineWidget({...})` en el archivo
 - [ ] `type` es único (grep para asegurar)
 - [ ] `category: 'general'` si el user lo puede agregar, `'cockpit'` si es programático
