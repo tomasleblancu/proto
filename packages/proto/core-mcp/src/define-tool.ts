@@ -84,6 +84,7 @@ export function defineTool<S extends z.ZodRawShape>(
 export function registerTools(
   server: McpServer,
   defs: readonly ToolDefinition[],
+  requestCtx?: ToolContext,
 ): void {
   for (const def of defs) {
     server.tool(
@@ -92,8 +93,8 @@ export function registerTools(
       def.schema,
       async (args: Record<string, unknown>) => {
         const ctx: ToolContext = {
-          company_id: process.env.COMPANY_ID || undefined,
-          user_id: process.env.USER_ID || undefined,
+          company_id: requestCtx?.company_id ?? process.env.COMPANY_ID ?? undefined,
+          user_id: requestCtx?.user_id ?? process.env.USER_ID ?? undefined,
         }
         try {
           return await def.handler(args as never, ctx)

@@ -121,8 +121,12 @@ function writeMcpConfig(sessionDir: string, request: ChatRequest): string {
 
   for (const [name, serverConfig] of Object.entries(config.mcp_servers)) {
     if (serverConfig.type === 'http') {
-      // HTTP MCP server — just pass the URL
-      mcpServers[name] = { type: 'http', url: serverConfig.url }
+      // HTTP MCP server — pass URL + company header so tools receive ctx.company_id
+      mcpServers[name] = {
+        type: 'http',
+        url: serverConfig.url,
+        headers: { 'x-company-id': request.company_id },
+      }
       continue
     }
 

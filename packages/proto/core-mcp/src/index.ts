@@ -69,8 +69,9 @@ export interface RunHttpOptions {
    * Factory called per-session to build a fresh McpServer with tools registered.
    * Each Claude Code session gets an isolated server instance so active-order
    * (and other per-session state) doesn't leak between users.
+   * Receives per-request context (e.g. company_id from x-company-id header).
    */
-  buildServer: () => McpServer
+  buildServer: (ctx: { companyId?: string }) => McpServer
   /** Optional display name used in log output. */
   displayName?: string
 }
@@ -87,7 +88,7 @@ export async function runHttp(opts: RunHttpOptions): Promise<void> {
     // CORS
     res.setHeader('Access-Control-Allow-Origin', '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id, x-company-id')
     res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id')
 
     if (req.method === 'OPTIONS') {
@@ -136,7 +137,8 @@ export async function runHttp(opts: RunHttpOptions): Promise<void> {
         sessionIdGenerator: () => randomUUID(),
       })
 
-      const server = opts.buildServer()
+      const companyId = req.headers['x-company-id'] as string | undefined
+      const server = opts.buildServer({ companyId })
       await server.connect(transport)
 
       transport.onclose = () => {
