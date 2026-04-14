@@ -4,7 +4,7 @@
  * Replicates the streaming logic from Hermes Chat (tool_use → tool_result → text → result)
  * in a generic, domain-agnostic way. Plugs into ProtoApp as the left panel.
  */
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { protoSocket, sendChatWs, resetSession, type StreamEvent } from '../../lib/api.js'
 import { GATEWAY_URL, INTERNAL_SECRET as SECRET } from '../../lib/config.js'
 import { ChatMessage, type ChatMessageData } from './ChatMessage.js'
@@ -103,6 +103,13 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
   }
 
   const addFilesRef = useRef<(files: File[]) => void>(() => {})
+  const [isDragOver, setIsDragOver] = useState(false)
+  const dragCounterRef = useRef(0)
+
+  useEffect(() => {
+    dragCounterRef.current = 0
+    setIsDragOver(false)
+  }, [companyId, sessionKey])
 
   const drainQueue = () => {
     const next = queueRef.current.shift()
@@ -280,8 +287,53 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
 
   const msgCount = messages.filter(m => m.role === 'user').length
 
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault()
+    if (Array.from(e.dataTransfer.items).some(i => i.kind === 'file')) {
+      dragCounterRef.current++
+      setIsDragOver(true)
+    }
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault()
+    dragCounterRef.current--
+    if (dragCounterRef.current === 0) setIsDragOver(false)
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    dragCounterRef.current = 0
+    setIsDragOver(false)
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) addFilesRef.current(files)
+  }
+
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full relative"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {isDragOver && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm border-2 border-dashed border-primary rounded-lg pointer-events-none">
+          <div className="flex flex-col items-center gap-2 text-primary">
+            <svg className="w-10 h-10 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <span className="text-sm font-medium">Drop files to attach</span>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-2">
@@ -393,3 +445,4 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
     </div>
   )
 }
+
