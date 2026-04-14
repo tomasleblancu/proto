@@ -312,3 +312,4 @@ Located in `.claude/skills/proto-*/SKILL.md`. Loaded by Claude Code when working
 | `proto-scaffold` | Create a new app |
 | `proto-debug` | Troubleshooting guide |
 | `proto-deploy` | Deployment guide |
+| `proto-suggest-change` | Propose a fix/improvement to the framework via PR |
