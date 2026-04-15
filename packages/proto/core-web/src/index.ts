@@ -28,6 +28,7 @@ export {
   type ShellContext,
   type ConfigPanelProps,
 } from './lib/define-widget.js'
+export { loadWidgets } from './lib/load-widgets.js'
 export type { ActiveEntity, GridLayouts, LayoutItem, WidgetInstance, WidgetType } from './components/shell/types.js'
 
 // Hooks
@@ -50,6 +51,9 @@ export * from './lib/widgetCache.js'
 
 // Agent runtime (render_ui)
 export { Generative } from './components/widgets/agent/Generative.js'
+
+// Built-in widgets (auto-registered by ProtoApp; exported for customization)
+export { mailWidget } from './components/widgets/mail/index.js'
 
 // UI primitives (shadcn)
 export { Avatar, AvatarFallback } from './components/ui/avatar.js'

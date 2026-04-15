@@ -27,6 +27,9 @@ import { ResizableLayout } from './components/ResizableLayout.js'
 import { useAuth } from './hooks/useAuth.js'
 import { useTheme } from './hooks/useTheme.js'
 import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget.js'
+import { mailWidget } from './components/widgets/mail/index.js'
+
+const BUILT_IN_WIDGETS: WidgetDefinition[] = [mailWidget]
 import { protoSocket, sendChatWs } from './lib/api.js'
 import { ChatPanel } from './components/chat/ChatPanel.js'
 import { Toaster } from './components/ui/toaster.js'
@@ -129,7 +132,10 @@ export function ProtoApp({
     sessionStorage.setItem(SESSION_KEY_OPEN, JSON.stringify(openEntities))
   }, [openEntities])
 
-  const widgetRegistry = useMemo(() => buildWidgetRegistry(widgetDefs), [widgetDefs])
+  const widgetRegistry = useMemo(
+    () => buildWidgetRegistry([...BUILT_IN_WIDGETS, ...widgetDefs]),
+    [widgetDefs]
+  )
 
   const cockpits = useMemo<Record<string, CockpitDefinition>>(() =>
     Object.fromEntries(
