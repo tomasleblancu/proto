@@ -16,38 +16,59 @@ El Shell es el canvas derecho que acompaña al chat. Muestra widgets en un grid 
 - "creá un widget cockpit para cuando hay una factura activa"
 - "mostrame cómo agregar un widget"
 
-## Un solo archivo
+## Un directorio estructurado
 
-Agregar un widget es **un solo paso**: crear un archivo en `web/src/widgets/<Name>Widget.tsx` que exporta `defineWidget()` por default. Se auto-descubre via `import.meta.glob` en `App.tsx` — no hay que registrar nada manualmente.
+> **IMPORTANTE:** El proyecto puede tener widgets legacy como archivos planos (`OrdersWidget.tsx`). Ignorá ese patrón — es código viejo. Todo widget **nuevo** debe crearse como directorio. No te dejes llevar por los archivos existentes.
+
+Agregar un widget es **crear un directorio** en `web/src/widgets/<name>/`. Estructura:
+
+```
+web/src/widgets/
+  orders/
+    index.tsx      # defineWidget + componente render (requerido)
+    config.tsx     # configPanel para Admin > Widgets (opcional, auto-inyectado)
+    types.ts       # tipos TypeScript del widget (opcional)
+```
+
+- **`index.tsx`** — requerido. Exporta `defineWidget()` por default.
+- **`config.tsx`** — opcional. Exporta por default un componente React que recibe `ConfigPanelProps`. El framework lo inyecta como `configPanel` automáticamente — no hay que importarlo en `index.tsx`.
+- **`types.ts`** — opcional. Interfaces TypeScript locales al widget (Item, Order, etc).
+
+Se auto-descubren via `loadWidgets()` en `App.tsx` — no hay que registrar nada manualmente.
 
 ## Shape del componente
 
-Un widget es un componente React que recibe los props que necesita. **No** reciben el `ShellContext` directo — eso es trabajo del adapter. Mantené el componente lo más puro posible (fácil de testear, fácil de reutilizar).
-
 ```tsx
-// examples/hermes/app/widgets/OrdersWidget.tsx
-// (actualmente en packages/core-web/src/components/widgets/OrdersWidget.tsx, moverá en Phase 3d)
-import { useData } from '@/hooks/useData'
+// web/src/widgets/orders/index.tsx
+import { defineWidget, useData, supabase } from '@tleblancureta/proto/web'
+import type { ShellContext } from '@tleblancureta/proto/web'
+import type { Order } from './types'
 
-interface Props {
-  companyId: string
-  refreshKey: number
-  onSelectOrder: (id: string, label: string) => void
-  onSendToChat: (message: string) => void
-  onCreateOrder: () => void
-}
+export default defineWidget({
+  type: 'orders',
+  title: 'Pedidos',
+  icon: '📦',
+  category: 'general',
+  defaultSize: { w: 4, h: 5, minW: 2, minH: 3 },
+  render: (_, ctx) => <Orders {...ctx} />,
+})
 
-export default function OrdersWidget({ companyId, refreshKey, onSelectOrder, onSendToChat, onCreateOrder }: Props) {
-  const { data: orders } = useData('orders', async (signal) => {
-    const res = await fetch(`/api/orders?company=${companyId}`, { signal })
-    return res.json()
-  }, [companyId, refreshKey], [])
+function Orders({ companyId, refreshKey, onActivateEntity }: ShellContext) {
+  const { data: orders } = useData<Order[]>(
+    async () => {
+      const { data } = await supabase.from('orders').select('*').eq('company_id', companyId)
+      return data || []
+    },
+    [companyId, refreshKey],
+    []
+  )
 
   return (
-    <div className="p-2">
-      <button onClick={onCreateOrder}>+ nuevo</button>
-      {orders?.map(o => (
-        <button key={o.id} onClick={() => onSelectOrder(o.id, o.title)}>{o.title}</button>
+    <div className="p-3">
+      {orders.map(o => (
+        <p key={o.id} onClick={() => onActivateEntity?.({ type: 'order', id: o.id, label: o.title })}>
+          {o.title}
+        </p>
       ))}
     </div>
   )
@@ -60,34 +81,25 @@ export default function OrdersWidget({ companyId, refreshKey, onSelectOrder, onS
 - **`refreshKey` en las deps de `useData`**. Así el widget re-fetcha cuando el agente cambia algo.
 - **Callbacks en vez de navegación directa**. `onSelectOrder(id)` en vez de `window.location = ...`. El Shell decide qué hacer.
 
-## Shape del registro (defineWidget)
+## App.tsx — auto-descubrimiento
+
+`App.tsx` usa `loadWidgets()` del framework para mergear `index.tsx` + `config.tsx` automáticamente:
 
 ```tsx
-// packages/core-web/src/components/shell/widgets-registry.tsx
-import { defineWidget } from '@/lib/define-widget'
-import OrdersWidget from '@/components/widgets/OrdersWidget'
+// web/src/App.tsx
+import { ProtoApp, loadWidgets } from '@tleblancureta/proto/web'
 
-export const WIDGETS = [
-  // ... otros widgets ...
+const WIDGETS = loadWidgets(
+  import.meta.glob('./widgets/*/index.tsx', { eager: true }),
+  import.meta.glob('./widgets/*/config.tsx', { eager: true }),
+)
 
-  defineWidget({
-    type: 'orders',                         // unique id
-    title: 'Pedidos',                       // shown in header + catalog menu
-    icon: '📦',                             // emoji for the catalog menu
-    category: 'general',                    // 'general' (user-addable) or 'cockpit' (programmatic)
-    defaultSize: { w: 3, h: 4, minW: 2, minH: 3 },
-    render: (_, ctx) => (
-      <OrdersWidget
-        companyId={ctx.companyId}
-        refreshKey={ctx.refreshKey}
-        onSelectOrder={(id, label) => ctx.onActivateEntity?.({ type: 'order', id, label })}
-        onSendToChat={ctx.onSendToChat}
-        onCreateOrder={() => ctx.openCreateOrder()}
-      />
-    ),
-  }),
-]
+export default function App() {
+  return <ProtoApp widgets={WIDGETS} />
+}
 ```
+
+No registrar nada manualmente. Crear el directorio, listo.
 
 ## defineWidget fields
 
@@ -101,6 +113,7 @@ export const WIDGETS = [
 - **`render(instance, ctx)`** — función que retorna el ReactNode. Recibe:
   - `instance: WidgetInstance` — `{ id, type, title, props? }` de la instancia particular del widget. Para instance-specific data (ej. `orderId` en `order-detail`), leé de `instance.props`.
   - `ctx: ShellContext` — el contexto compartido.
+- **`configPanel(props)`** — *(opcional)* función que retorna el ReactNode de configuración. Se renderiza en Admin > Widgets al hacer click en el widget. Recibe `{ companyId, widgetType }`. Ver sección "Widget con configuración" abajo.
 
 ## ShellContext
 
@@ -164,6 +177,82 @@ defineWidget({
 
 **Nota**: qué widgets aparecen en el cockpit y en qué layout viene de `catalog.ts::ORDER_COCKPIT_WIDGETS` + `ORDER_COCKPIT_LAYOUTS`. Esto va a moverse a `defineEntity()` en Phase 3e — por ahora, si agregás un widget cockpit nuevo, también agregalo al array correspondiente de `catalog.ts`.
 
+## Widget con configuración
+
+Si un widget necesita settings configurables por el admin, creá `config.tsx` en el directorio del widget. El framework lo auto-inyecta como `configPanel` — no hay que tocarlo en `index.tsx`.
+
+### config.tsx
+
+```tsx
+// web/src/widgets/mi-widget/config.tsx
+import { useWidgetSettings } from '@tleblancureta/proto/web'
+import type { ConfigPanelProps } from '@tleblancureta/proto/web'
+
+export default function MiConfig({ companyId, widgetType }: ConfigPanelProps) {
+  const { settings, saveSettings, loading } = useWidgetSettings(
+    widgetType, companyId, { rate: 0, currency: 'CLP' }
+  )
+  if (loading) return <p>Cargando...</p>
+  return (
+    <div className="space-y-4">
+      <label className="text-sm font-medium">Tarifa por hora</label>
+      <input type="number" value={settings.rate}
+        onChange={e => saveSettings({ rate: Number(e.target.value) })}
+        className="border rounded px-2 py-1" />
+    </div>
+  )
+}
+```
+
+### index.tsx — sin cambios, el config se inyecta solo
+
+```tsx
+// web/src/widgets/mi-widget/index.tsx
+export default defineWidget({
+  type: 'mi-widget',
+  title: 'Mi Widget',
+  icon: '⚙️',
+  category: 'general',
+  // NO hace falta importar ni declarar configPanel acá
+  render: (_, ctx) => <MiWidget {...ctx} />,
+})
+```
+
+### 2. useWidgetSettings API
+
+```ts
+const { settings, loading, error, saveSettings } = useWidgetSettings<T>(
+  widgetType,   // string — el `type` del widget
+  companyId,    // string — company actual
+  defaults,     // T — valores default (también define el tipo TypeScript)
+)
+```
+
+- **`settings: T`** — merge de defaults + DB + cambios optimistas. Siempre completo.
+- **`saveSettings(patch)`** — upsert parcial. Optimista: actualiza local primero, luego persiste.
+- Se re-fetcha automáticamente cuando cambia `companyId` o `widgetType`.
+
+### 3. Tabla widget_settings
+
+Migración ya incluida en el framework (`20260413100000_widget_settings.sql`):
+
+```sql
+create table widget_settings (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null,
+  widget_type text not null,
+  settings jsonb not null default '{}',
+  updated_at timestamptz not null default now(),
+  unique (company_id, widget_type)
+);
+```
+
+**No necesitás crear esta migración** — viene con el scaffold. Si tu app es anterior, aplicá la migración manualmente.
+
+### 4. Admin > Widgets
+
+Los widgets con `configPanel` aparecen con un icono de engranaje en la lista de Admin > Widgets. Al hacer click se abre el panel de configuración. Los que no tienen `configPanel` no son clickeables.
+
 ## Después de agregar el widget
 
 1. **Verificá el build**:
@@ -208,14 +297,15 @@ defineWidget({
 
 ## Checklist antes de cerrar
 
-- [ ] Componente React en `web/src/widgets/<Name>Widget.tsx`
-- [ ] Props explícitos, sin leer context global
-- [ ] `useData('name', fetcher, [deps, refreshKey], initial)` en vez de `useEffect`
-- [ ] `export default defineWidget({...})` en el archivo
+- [ ] Directorio en `web/src/widgets/<name>/`
+- [ ] `index.tsx` con `export default defineWidget({...})`
 - [ ] `type` es único (grep para asegurar)
 - [ ] `category: 'general'` si el user lo puede agregar, `'cockpit'` si es programático
 - [ ] `defaultSize` ajustado al contenido esperado (mirá otros widgets similares)
+- [ ] `useData(fetcher, [deps, refreshKey], initial)` en vez de `useEffect`
 - [ ] Si es cockpit: referenciado en `defineEntity({ cockpit: { widgets, layouts } })` de la entity correspondiente
 - [ ] Si necesitás campos extra en ctx: module augmentation en `web/src/shell-context.d.ts`
+- [ ] Si tiene config: `config.tsx` con export default del componente (sin tocar `index.tsx`)
+- [ ] Si tiene tipos compartidos entre index y config: `types.ts` en el directorio
 - [ ] `npm run build` pasa
 - [ ] Smoke test visual en el browser

@@ -38,10 +38,10 @@ interface Props {
 }
 
 export default function OrdersWidget({ companyId, refreshKey, onSelectOrder, onSendToChat, onCreateOrder }: Props) {
-  const { data: orders } = useData(async (signal) => {
+  const { data: orders } = useData('orders', async (signal) => {
     const res = await fetch(`/api/orders?company=${companyId}`, { signal })
     return res.json()
-  }, [companyId, refreshKey])
+  }, [companyId, refreshKey], [])
 
   return (
     <div className="p-2">
@@ -101,7 +101,6 @@ export const WIDGETS = [
 - **`render(instance, ctx)`** — función que retorna el ReactNode. Recibe:
   - `instance: WidgetInstance` — `{ id, type, title, props? }` de la instancia particular del widget. Para instance-specific data (ej. `orderId` en `order-detail`), leé de `instance.props`.
   - `ctx: ShellContext` — el contexto compartido.
-- **`configPanel(props)`** — *(opcional)* función que retorna el ReactNode de configuración. Se renderiza en Admin > Widgets al hacer click en el widget. Recibe `{ companyId, widgetType }`. Ver sección "Widget con configuración" abajo.
 
 ## ShellContext
 
@@ -165,83 +164,6 @@ defineWidget({
 
 **Nota**: qué widgets aparecen en el cockpit y en qué layout viene de `catalog.ts::ORDER_COCKPIT_WIDGETS` + `ORDER_COCKPIT_LAYOUTS`. Esto va a moverse a `defineEntity()` en Phase 3e — por ahora, si agregás un widget cockpit nuevo, también agregalo al array correspondiente de `catalog.ts`.
 
-## Widget con configuración
-
-Si un widget necesita settings configurables por el admin (montos, tasas, opciones), usá `configPanel` + `useWidgetSettings`. Los settings se guardan en la tabla `widget_settings` (por `company_id` + `widget_type`) como JSON.
-
-### 1. Declarar el configPanel en defineWidget
-
-```tsx
-import { defineWidget, useWidgetSettings } from '@tleblancureta/proto/web'
-import type { ConfigPanelProps, ShellContext } from '@tleblancureta/proto/web'
-
-// Panel de configuración (se renderiza en Admin > Widgets)
-function MiConfig({ companyId, widgetType }: ConfigPanelProps) {
-  const { settings, saveSettings, loading } = useWidgetSettings(
-    widgetType, companyId, { rate: 0, currency: 'CLP' }
-  )
-  if (loading) return <p>Cargando...</p>
-  return (
-    <div className="space-y-4">
-      <label className="text-sm font-medium">Tarifa por hora</label>
-      <input type="number" value={settings.rate}
-        onChange={e => saveSettings({ rate: Number(e.target.value) })}
-        className="border rounded px-2 py-1" />
-    </div>
-  )
-}
-
-// Widget que usa la configuración
-function MiWidget({ companyId, refreshKey }: ShellContext) {
-  const { settings } = useWidgetSettings('mi-widget', companyId, { rate: 0, currency: 'CLP' })
-  // usar settings.rate en los cálculos...
-}
-
-export default defineWidget({
-  type: 'mi-widget',
-  title: 'Mi Widget',
-  icon: '⚙️',
-  category: 'general',
-  configPanel: (props) => <MiConfig {...props} />,
-  render: (_, ctx) => <MiWidget {...ctx} />,
-})
-```
-
-### 2. useWidgetSettings API
-
-```ts
-const { settings, loading, error, saveSettings } = useWidgetSettings<T>(
-  widgetType,   // string — el `type` del widget
-  companyId,    // string — company actual
-  defaults,     // T — valores default (también define el tipo TypeScript)
-)
-```
-
-- **`settings: T`** — merge de defaults + DB + cambios optimistas. Siempre completo.
-- **`saveSettings(patch)`** — upsert parcial. Optimista: actualiza local primero, luego persiste.
-- Se re-fetcha automáticamente cuando cambia `companyId` o `widgetType`.
-
-### 3. Tabla widget_settings
-
-Migración ya incluida en el framework (`20260413100000_widget_settings.sql`):
-
-```sql
-create table widget_settings (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null,
-  widget_type text not null,
-  settings jsonb not null default '{}',
-  updated_at timestamptz not null default now(),
-  unique (company_id, widget_type)
-);
-```
-
-**No necesitás crear esta migración** — viene con el scaffold. Si tu app es anterior, aplicá la migración manualmente.
-
-### 4. Admin > Widgets
-
-Los widgets con `configPanel` aparecen con un icono de engranaje en la lista de Admin > Widgets. Al hacer click se abre el panel de configuración. Los que no tienen `configPanel` no son clickeables.
-
 ## Después de agregar el widget
 
 1. **Verificá el build**:
@@ -288,13 +210,12 @@ Los widgets con `configPanel` aparecen con un icono de engranaje en la lista de 
 
 - [ ] Componente React en `web/src/widgets/<Name>Widget.tsx`
 - [ ] Props explícitos, sin leer context global
-- [ ] `useData(fetcher, [deps, refreshKey])` en vez de `useEffect`
+- [ ] `useData('name', fetcher, [deps, refreshKey], initial)` en vez de `useEffect`
 - [ ] `export default defineWidget({...})` en el archivo
 - [ ] `type` es único (grep para asegurar)
 - [ ] `category: 'general'` si el user lo puede agregar, `'cockpit'` si es programático
 - [ ] `defaultSize` ajustado al contenido esperado (mirá otros widgets similares)
 - [ ] Si es cockpit: referenciado en `defineEntity({ cockpit: { widgets, layouts } })` de la entity correspondiente
 - [ ] Si necesitás campos extra en ctx: module augmentation en `web/src/shell-context.d.ts`
-- [ ] Si tiene config: `configPanel` declarado + `useWidgetSettings` en el render
 - [ ] `npm run build` pasa
 - [ ] Smoke test visual en el browser

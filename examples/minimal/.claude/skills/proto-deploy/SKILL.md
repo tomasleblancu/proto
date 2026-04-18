@@ -153,6 +153,29 @@ docker compose up -d --build agent
 
 ## Railway
 
+Proto apps incluyen el MCP server de Railway por defecto (`.mcp.json`). Esto permite usar el skill `/use-railway` o las tools de Railway directamente desde Claude Code para gestionar infraestructura.
+
+### MCP de Railway
+
+El MCP server de Railway está preconfigurado en `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "Railway": {
+      "command": "npx",
+      "args": ["@railway/mcp-server"]
+    }
+  }
+}
+```
+
+Con esto disponible, podés pedirle a Claude Code:
+- "creá un proyecto en Railway para esta app"
+- "configurá las env vars en Railway"
+- "mostrame los logs del deploy"
+- "qué servicios tengo corriendo"
+
 ### railway.toml
 
 ```toml
@@ -170,7 +193,7 @@ restartPolicyMaxRetries = 3
 name = "agent"
 ```
 
-Railway auto-detecta el Dockerfile. Env vars se setean en el dashboard.
+Railway auto-detecta el Dockerfile. Env vars se setean en el dashboard o via el MCP de Railway.
 
 ### Deploy
 
@@ -179,6 +202,8 @@ railway up           # deploy
 railway logs         # ver logs
 railway status       # estado del deploy
 ```
+
+Si tenés el MCP de Railway activo, también podés hacer todo esto desde chat con Claude Code via el skill `/use-railway`.
 
 ## Health checks
 

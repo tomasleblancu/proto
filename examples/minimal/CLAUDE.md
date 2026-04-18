@@ -28,7 +28,7 @@ web/                        Frontend (React + Vite)
     App.tsx                 Auto-discovers widgets, renders ProtoApp
     main.tsx                React root
     index.css               Tailwind + CSS design tokens
-    widgets/*.tsx            Dashboard widgets — auto-discovered
+    widgets/*/index.tsx      Dashboard widgets — auto-discovered (directory-based)
 
 supabase/
   migrations/*.sql          Database schema (timestamp-prefixed)
@@ -77,8 +77,18 @@ export default [
 
 ### 3. Widgets (what the user sees)
 
+Each widget is a **directory** under `web/src/widgets/<name>/`:
+
+```
+web/src/widgets/
+  things/
+    index.tsx      # defineWidget + render (required)
+    config.tsx     # configPanel for Admin > Widgets (optional, auto-injected)
+    types.ts       # TypeScript types local to this widget (optional)
+```
+
 ```tsx
-// web/src/widgets/ThingsWidget.tsx
+// web/src/widgets/things/index.tsx
 import { defineWidget, useData, supabase } from '@tleblancureta/proto/web'
 import type { ShellContext } from '@tleblancureta/proto/web'
 
@@ -100,7 +110,7 @@ function Things({ companyId, refreshKey }: ShellContext) {
 }
 ```
 
-All three are auto-discovered. Drop files, they load.
+All three are auto-discovered. Drop files, they load. If `config.tsx` exists in the widget directory, it is automatically injected as `configPanel`.
 
 ## Imports
 
