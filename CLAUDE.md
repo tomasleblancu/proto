@@ -97,8 +97,19 @@ export default [
 Tools are auto-discovered from `app/tools/*.ts`. Each file exports `default [defineTool(...), ...]`. The handler can contain any business logic — validation, API calls, multi-table operations.
 
 ### 3. Widgets (what the user sees)
+
+Each widget is a **directory** under `web/src/widgets/<name>/`:
+
+```
+web/src/widgets/
+  items/
+    index.tsx      # defineWidget + render component (required)
+    config.tsx     # configPanel for Admin > Widgets (optional, auto-injected)
+    types.ts       # TypeScript types local to this widget (optional)
+```
+
 ```tsx
-// web/src/widgets/ItemsWidget.tsx
+// web/src/widgets/items/index.tsx
 import { defineWidget, useData, supabase } from '@tleblancureta/proto/web'
 import type { ShellContext } from '@tleblancureta/proto/web'
 
@@ -127,7 +138,7 @@ function Items({ companyId, refreshKey, onActivateEntity }: ShellContext) {
   )
 }
 ```
-Widgets are auto-discovered from `web/src/widgets/*.tsx` via `import.meta.glob`. Each file exports a `defineWidget()` default — self-registering, no manual registry needed.
+Widgets are auto-discovered via `loadWidgets()` in `App.tsx`. Drop a directory, it loads. If `config.tsx` exists, it is automatically injected as `configPanel` — no manual import needed.
 
 ### Optional: entities, workflows, skills, prompts
 
@@ -171,9 +182,11 @@ import { createProtoGateway } from '@tleblancureta/proto/gateway'
 await createProtoGateway()
 
 // web/src/App.tsx — auto-discovers widgets + entities
-import { ProtoApp } from '@tleblancureta/proto/web'
-const mods = import.meta.glob('./widgets/*.tsx', { eager: true })
-const WIDGETS = Object.values(mods).map(m => m.default).filter(Boolean)
+import { ProtoApp, loadWidgets } from '@tleblancureta/proto/web'
+const WIDGETS = loadWidgets(
+  import.meta.glob('./widgets/*/index.tsx', { eager: true }),
+  import.meta.glob('./widgets/*/config.tsx', { eager: true }),
+)
 export default function App() { return <ProtoApp widgets={WIDGETS} /> }
 ```
 

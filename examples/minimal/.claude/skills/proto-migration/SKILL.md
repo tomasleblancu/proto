@@ -93,15 +93,6 @@ as $$
 $$;
 ```
 
-## Tablas del framework
-
-Estas migraciones ya vienen incluidas en el scaffold. **No las crees manualmente** en apps nuevas:
-
-- `scheduled_tasks` + `task_runs` — cron/scheduling (`20260413000000_scheduled_tasks.sql`)
-- `widget_settings` — configuración por widget por empresa (`20260413100000_widget_settings.sql`)
-
-Si tu app es anterior al scaffold actual, copiá las migraciones de `examples/minimal/supabase/migrations/` y aplicá con `supabase db push`.
-
 ## Workflow tables
 
 Si la app usa `defineWorkflow`, necesitás estas tablas (ver `examples/minimal` para referencia):

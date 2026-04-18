@@ -1,5 +1,6 @@
 import { defineWidget, useData, supabase, Card, CardContent, CardHeader } from '@tleblancureta/proto/web'
 import type { ShellContext } from '@tleblancureta/proto/web'
+import type { Item } from './types'
 
 export default defineWidget({
   type: 'item-detail',
@@ -10,18 +11,11 @@ export default defineWidget({
   render: (_, ctx) => <ItemDetail {...ctx} />,
 })
 
-interface Item {
-  id: string
-  name: string
-  description: string | null
-  created_at: string
-  updated_at: string
-}
-
 function ItemDetail({ activeEntity, refreshKey }: ShellContext) {
   const itemId = activeEntity?.type === 'item' ? activeEntity.id : null
 
   const { data: item, loading } = useData<Item | null>(
+    'item-detail',
     async () => {
       if (!itemId) return null
       const { data } = await supabase.from('items').select('*').eq('id', itemId).single()
