@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { createElement, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth.js'
 import { useData } from '../../hooks/useData.js'
@@ -264,7 +264,7 @@ function WidgetsTab({ widgets }: { widgets?: WidgetRegistry }) {
           <span className="text-xs px-2 py-0.5 bg-muted rounded-full text-muted-foreground">{def.type}</span>
         </div>
         <div className="border border-border rounded-lg p-6">
-          {def.configPanel({ companyId, widgetType: def.type })}
+          {createElement(def.configPanel, { companyId, widgetType: def.type })}
         </div>
       </div>
     )
