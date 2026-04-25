@@ -166,22 +166,38 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
     setIsDragOver(false)
   }, [companyId, sessionKey])
 
+  // Keep sessionsRef in sync with the latest state inside the reducer so
+  // queue/streaming reads in subsequent reducers (drainQueue, handleSend)
+  // never see stale values when WS events arrive between renders.
   const updateSession = useCallback((key: string, updater: (s: SessionState) => SessionState) => {
     setSessions(prev => {
       const cur = prev[key] || makeSession(companyIdRef.current, key)
-      return { ...prev, [key]: updater(cur) }
+      const next = { ...prev, [key]: updater(cur) }
+      sessionsRef.current = next
+      return next
     })
   }, [])
 
   const processMessageRef = useRef<(targetKey: string, item: QueueItem) => void>(() => {})
 
+  // Atomic dequeue: read + write the queue inside a single setSessions call so
+  // we always see the latest state, even if the result event fires in the
+  // same task as the user's enqueue.
   const drainQueue = useCallback((targetKey: string) => {
-    const target = sessionsRef.current[targetKey]
-    if (!target || target.queue.length === 0) return
-    const [next, ...rest] = target.queue
-    updateSession(targetKey, s => ({ ...s, queue: rest }))
-    setTimeout(() => processMessageRef.current(targetKey, next), 0)
-  }, [updateSession])
+    let next: QueueItem | undefined
+    setSessions(prev => {
+      const target = prev[targetKey]
+      if (!target || target.queue.length === 0) return prev
+      next = target.queue[0]
+      const updated = { ...prev, [targetKey]: { ...target, queue: target.queue.slice(1) } }
+      sessionsRef.current = updated
+      return updated
+    })
+    if (next) {
+      const item = next
+      setTimeout(() => processMessageRef.current(targetKey, item), 0)
+    }
+  }, [])
 
   const processMessage = useCallback((targetKey: string, item: QueueItem) => {
     const { text, serverPaths, displayImages, files } = item
@@ -250,6 +266,7 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
               next[k] = { ...s, messages: copy, streaming: false }
               saveMessages(companyIdRef.current, k, copy)
             }
+            sessionsRef.current = next
             return next
           })
         }
@@ -324,7 +341,9 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
             break
         }
 
-        return { ...prev, [targetKey]: { ...target, messages: copy, streaming: nextStreaming } }
+        const updated = { ...prev, [targetKey]: { ...target, messages: copy, streaming: nextStreaming } }
+        sessionsRef.current = updated
+        return updated
       })
 
       if (targetKey === currentSessionKeyRef.current) scroll()
@@ -379,7 +398,11 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
 
   function clearChat() {
     const key = sessionKey
-    setSessions(prev => ({ ...prev, [key]: { messages: [], streaming: false, queue: [] } }))
+    setSessions(prev => {
+      const updated = { ...prev, [key]: { messages: [], streaming: false, queue: [] } }
+      sessionsRef.current = updated
+      return updated
+    })
     localStorage.removeItem(storageKey(companyId, key))
     resetSession(companyId, key)
   }
