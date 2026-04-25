@@ -23,6 +23,7 @@ export { getSupabase } from './supabase.js'
 export { ok, json, err, agent, agentErr } from './tools/_helpers.js'
 export { registerUiTools } from './tools/ui.js'
 export { registerSchedulingTools } from './tools/scheduling.js'
+export { registerGmailTools } from './tools/gmail.js'
 export { McpServer }
 export {
   defineTool,

@@ -50,6 +50,7 @@ if (existsSync(migrationsSrc) && existsSync(migrationsDest)) {
   /** Map of migration name → marker regex to detect if already applied */
   const MIGRATION_MARKERS = {
     'scheduled_tasks.sql': /CREATE TABLE[^;]*scheduled_tasks/i,
+    'gmail_tokens.sql': /CREATE TABLE[^;]*gmail_tokens/i,
   }
 
   // Read all existing migration content once

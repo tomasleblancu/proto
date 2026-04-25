@@ -24,12 +24,14 @@ import Shell, { type CockpitDefinition } from './components/Shell.js'
 import { AdminPanel } from './components/admin/AdminPanel.js'
 import { LoginForm } from './components/LoginForm.js'
 import { ResizableLayout } from './components/ResizableLayout.js'
+import { GmailCallback } from './components/GmailCallback.js'
 import { useAuth } from './hooks/useAuth.js'
 import { useTheme } from './hooks/useTheme.js'
 import { buildWidgetRegistry, type WidgetDefinition } from './lib/define-widget.js'
 import { mailWidget } from './components/widgets/mail/index.js'
+import { gmailWidget } from './components/widgets/gmail/index.js'
 
-const BUILT_IN_WIDGETS: WidgetDefinition[] = [mailWidget]
+const BUILT_IN_WIDGETS: WidgetDefinition[] = [mailWidget, gmailWidget]
 import { protoSocket, sendChatWs } from './lib/api.js'
 import { ChatPanel } from './components/chat/ChatPanel.js'
 import { Toaster } from './components/ui/toaster.js'
@@ -232,6 +234,7 @@ export function ProtoApp({
       <BrowserRouter>
         <Routes>
           <Route path="/admin" element={<AdminPanel widgets={widgetRegistry} />} />
+          <Route path="/gmail/callback" element={<GmailCallback />} />
           <Route path="*" element={
             <ResizableLayout
               chatPanel={

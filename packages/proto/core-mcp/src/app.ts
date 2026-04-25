@@ -24,6 +24,7 @@ import { createMcpServer, runStdio, runHttp } from './index.js'
 import { registerTools, type ToolDefinition } from './define-tool.js'
 import { registerUiTools } from './tools/ui.js'
 import { registerSchedulingTools } from './tools/scheduling.js'
+import { registerGmailTools } from './tools/gmail.js'
 import { registerEntityTools } from './entity-tools.js'
 import { registerWorkflowTools } from './workflow-tools.js'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -172,6 +173,7 @@ export async function createProtoMcp(opts: ProtoMcpOptions) {
     const toolCtx = ctx?.companyId ? { company_id: ctx.companyId } : undefined
     registerUiTools(server)
     registerSchedulingTools(server)
+    registerGmailTools(server)
     if (allTools.length > 0) registerTools(server, allTools, toolCtx)
     if (allEntities.length > 0) registerEntityTools(server, allEntities)
     if (workflow) registerWorkflowTools(server, workflow)
