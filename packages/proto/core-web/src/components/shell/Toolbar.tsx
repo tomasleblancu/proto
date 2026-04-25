@@ -43,6 +43,7 @@ interface Props {
   openEntities?: ActiveEntity[]
   onSelectEntity?: (e: ActiveEntity) => void
   onCloseTab?: (e: ActiveEntity) => void
+  streamingSessions?: Set<string>
   role?: string | null
   companies?: Array<{ id: string; name: string }>
   effectiveCompanyId?: string
@@ -55,7 +56,7 @@ interface Props {
 export function Toolbar({
   widgetCount, cockpitMode, activeEntity, onDeactivateEntity, onReset, onAddWidget,
   widgetCatalog, onOpenSettings, editingLayout, onToggleEditLayout,
-  openEntities, onSelectEntity, onCloseTab,
+  openEntities, onSelectEntity, onCloseTab, streamingSessions,
   role, companies, effectiveCompanyId, setCompanyId, onSignOut, userEmail,
   rightActions,
 }: Props) {
@@ -91,19 +92,23 @@ export function Toolbar({
           <div className="flex items-center gap-0.5 min-w-0 overflow-x-auto scrollbar-thin">
             {openEntities.map(e => {
               const isActive = !!(cockpitMode && activeEntity && activeEntity.type === e.type && activeEntity.id === e.id)
+              const isStreaming = !!streamingSessions?.has(`${e.type}-${e.id}`)
               return (
                 <button
                   key={`${e.type}-${e.id}`}
                   role="tab"
                   aria-selected={isActive}
+                  title={isStreaming ? `${e.label} — agente trabajando` : e.label}
                   className={`group flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-md border text-[11px] cursor-pointer transition-colors shrink-0 max-w-[200px] ${
                     isActive
                       ? 'bg-primary/10 border-primary/40 text-foreground'
-                      : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                      : isStreaming
+                        ? 'bg-primary/5 border-primary/30 text-foreground hover:bg-primary/10'
+                        : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-accent/50'
                   }`}
                   onClick={() => onSelectEntity?.(e)}
                 >
-                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-primary animate-pulse' : 'bg-muted-foreground/40'}`} />
+                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isStreaming ? 'bg-primary animate-pulse' : isActive ? 'bg-primary' : 'bg-muted-foreground/40'}`} />
                   <span className="truncate">{e.label}</span>
                   <span
                     role="button"

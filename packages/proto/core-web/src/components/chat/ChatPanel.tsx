@@ -30,6 +30,8 @@ interface Props {
   activeEntity?: ActiveEntity | null
   /** Called when user wants to exit entity context */
   onClearEntity?: () => void
+  /** Notified whenever the set of session_keys with an in-flight stream changes. */
+  onStreamingChange?: (streamingSessions: Set<string>) => void
 }
 
 const STORAGE_PREFIX = 'proto-chat-'
@@ -86,7 +88,7 @@ function allDone(tcs: ChatMessageData['toolCalls']) {
 
 const EMPTY_SESSION: SessionState = { messages: [], streaming: false, queue: [] }
 
-export function ChatPanel({ companyId, userId, appName, companyContext, onStreamComplete, onRegisterSend, activeEntity, onClearEntity }: Props) {
+export function ChatPanel({ companyId, userId, appName, companyContext, onStreamComplete, onRegisterSend, activeEntity, onClearEntity, onStreamingChange }: Props) {
   const sessionKey = sessionKeyFor(activeEntity)
 
   // Per-session state: messages, streaming, queue keyed by session_key.
@@ -129,10 +131,26 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
 
   const onStreamCompleteRef = useRef(onStreamComplete)
   onStreamCompleteRef.current = onStreamComplete
+  const onStreamingChangeRef = useRef(onStreamingChange)
+  onStreamingChangeRef.current = onStreamingChange
   const companyIdRef = useRef(companyId)
   companyIdRef.current = companyId
   const currentSessionKeyRef = useRef(sessionKey)
   currentSessionKeyRef.current = sessionKey
+
+  // Stable signature of streaming session keys — only changes when the set
+  // of streaming sessions changes (not on every token), so the consumer
+  // doesn't re-render on every chat event.
+  const streamingSignature = useMemo(() => {
+    const keys: string[] = []
+    for (const [k, s] of Object.entries(sessions)) if (s.streaming) keys.push(k)
+    return keys.sort().join(',')
+  }, [sessions])
+
+  useEffect(() => {
+    if (!onStreamingChangeRef.current) return
+    onStreamingChangeRef.current(new Set(streamingSignature ? streamingSignature.split(',') : []))
+  }, [streamingSignature])
 
   const sendRef = useRef<(msg: string) => void>(() => {})
   if (onRegisterSend) {

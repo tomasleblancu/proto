@@ -115,6 +115,7 @@ export function ProtoApp({
 
   const { user, role, companyId, companies, profile, loading, signOut, setCompanyId } = useAuth()
   const [refreshKey, setRefreshKey] = useState(0)
+  const [streamingSessions, setStreamingSessions] = useState<Set<string>>(() => new Set())
 
   type Entity = { type: string; id: string; label: string }
   const [activeEntity, setActiveEntity] = useState<Entity | null>(() =>
@@ -243,6 +244,7 @@ export function ProtoApp({
                   onRegisterSend={(fn) => { chatSendRef.current = fn }}
                   activeEntity={activeEntity}
                   onClearEntity={() => setActiveEntity(null)}
+                  onStreamingChange={setStreamingSessions}
                 />
               }
               shellPanel={
@@ -259,6 +261,7 @@ export function ProtoApp({
                   onDeactivateEntity={() => setActiveEntity(null)}
                   openEntities={openEntities}
                   onCloseTab={closeEntityTab}
+                  streamingSessions={streamingSessions}
                   role={role}
                   companies={companies}
                   effectiveCompanyId={effectiveCompanyId}

@@ -53,6 +53,8 @@ interface Props {
   onDeactivateEntity?: () => void
   openEntities?: ActiveEntity[]
   onCloseTab?: (e: ActiveEntity) => void
+  /** Set of session_keys with an in-flight chat stream — used to badge entity tabs. */
+  streamingSessions?: Set<string>
 
   // Toolbar
   role?: string | null
@@ -100,7 +102,7 @@ export default function Shell({
   companyId, refreshKey, onSendToChat,
   agentView, onAgentDismiss,
   activeEntity, onActivateEntity, onDeactivateEntity,
-  openEntities, onCloseTab,
+  openEntities, onCloseTab, streamingSessions,
   role, companies, effectiveCompanyId, setCompanyId, onSignOut, userEmail,
   onOpenSettings, toolbarExtras,
   contextExtras, overlays,
@@ -263,6 +265,7 @@ export default function Shell({
         openEntities={openEntities}
         onSelectEntity={(e) => onActivateEntity?.(e)}
         onCloseTab={onCloseTab}
+        streamingSessions={streamingSessions}
         role={role}
         companies={companies}
         effectiveCompanyId={effectiveCompanyId}
