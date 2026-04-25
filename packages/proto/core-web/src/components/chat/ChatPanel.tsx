@@ -1,10 +1,12 @@
 /**
  * ChatPanel — framework-provided chat panel with WebSocket streaming.
  *
- * Replicates the streaming logic from Hermes Chat (tool_use → tool_result → text → result)
- * in a generic, domain-agnostic way. Plugs into ProtoApp as the left panel.
+ * State is partitioned per session_key (one slot per entity tab + 'web' for
+ * the no-entity case) so switching tabs does not interrupt in-flight streams.
+ * The WS handler is registered once on mount and routes events by
+ * `event.session_key`, written by the gateway when a chat turn starts.
  */
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { protoSocket, sendChatWs, resetSession, type StreamEvent } from '../../lib/api.js'
 import { GATEWAY_URL, INTERNAL_SECRET as SECRET } from '../../lib/config.js'
 import { ChatMessage, type ChatMessageData } from './ChatMessage.js'
@@ -31,6 +33,19 @@ interface Props {
 }
 
 const STORAGE_PREFIX = 'proto-chat-'
+
+type QueueItem = {
+  text: string
+  serverPaths?: string[]
+  displayImages?: string[]
+  files?: { name: string; type: string }[]
+}
+
+type SessionState = {
+  messages: ChatMessageData[]
+  streaming: boolean
+  queue: QueueItem[]
+}
 
 function sessionKeyFor(entity?: ActiveEntity | null): string {
   if (entity?.type && entity?.id) return `${entity.type}-${entity.id}`
@@ -61,33 +76,48 @@ function saveMessages(companyId: string, session: string, messages: ChatMessageD
   } catch {}
 }
 
+function makeSession(companyId: string, key: string): SessionState {
+  return { messages: loadMessages(companyId, key), streaming: false, queue: [] }
+}
+
 function allDone(tcs: ChatMessageData['toolCalls']) {
   return (tcs || []).map(tc => ({ ...tc, status: 'done' as const }))
 }
 
+const EMPTY_SESSION: SessionState = { messages: [], streaming: false, queue: [] }
+
 export function ChatPanel({ companyId, userId, appName, companyContext, onStreamComplete, onRegisterSend, activeEntity, onClearEntity }: Props) {
   const sessionKey = sessionKeyFor(activeEntity)
-  const [messages, setMessages] = useState<ChatMessageData[]>(() => loadMessages(companyId, sessionKey))
-  const [streaming, setStreaming] = useState(false)
-  const [queue, setQueue] = useState<Array<{ text: string; serverPaths?: string[]; displayImages?: string[]; files?: { name: string; type: string }[] }>>([])
-  const queueRef = useRef<Array<{ text: string; serverPaths?: string[]; displayImages?: string[]; files?: { name: string; type: string }[] }>>([])
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const streamingRef = useRef(false)
-  const companyRef = useRef(companyId)
-  const sessionRef = useRef(sessionKey)
-  const scrolledOnMount = useRef(false)
 
-  // Reset state when company or session changes
-  if (companyRef.current !== companyId || sessionRef.current !== sessionKey) {
+  // Per-session state: messages, streaming, queue keyed by session_key.
+  // Switching activeEntity does NOT clear other sessions — they keep streaming
+  // in the background and the UI just shows whichever slot matches sessionKey.
+  const [sessions, setSessions] = useState<Record<string, SessionState>>(() => ({
+    [sessionKey]: makeSession(companyId, sessionKey),
+  }))
+
+  // Reset everything when companyId changes (different tenant, different chats).
+  const companyRef = useRef(companyId)
+  if (companyRef.current !== companyId) {
     companyRef.current = companyId
-    sessionRef.current = sessionKey
-    setMessages(loadMessages(companyId, sessionKey))
-    queueRef.current = []
-    setQueue([])
-    setStreaming(false)
-    streamingRef.current = false
-    scrolledOnMount.current = false
+    setSessions({ [sessionKey]: makeSession(companyId, sessionKey) })
   }
+
+  // Lazy-init the slot for the current session if missing (new tab opened).
+  if (!sessions[sessionKey]) {
+    setSessions(prev => prev[sessionKey] ? prev : { ...prev, [sessionKey]: makeSession(companyId, sessionKey) })
+  }
+
+  const current = sessions[sessionKey] || EMPTY_SESSION
+  const messages = current.messages
+  const streaming = current.streaming
+  const queue = current.queue
+
+  const sessionsRef = useRef(sessions)
+  sessionsRef.current = sessions
+
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrolledOnMount = useRef(false)
 
   // Scroll to bottom on first render with messages
   if (!scrolledOnMount.current && messages.length > 0) {
@@ -96,6 +126,13 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
   }
 
   const scroll = () => bottomRef.current?.scrollIntoView()
+
+  const onStreamCompleteRef = useRef(onStreamComplete)
+  onStreamCompleteRef.current = onStreamComplete
+  const companyIdRef = useRef(companyId)
+  companyIdRef.current = companyId
+  const currentSessionKeyRef = useRef(sessionKey)
+  currentSessionKeyRef.current = sessionKey
 
   const sendRef = useRef<(msg: string) => void>(() => {})
   if (onRegisterSend) {
@@ -111,17 +148,25 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
     setIsDragOver(false)
   }, [companyId, sessionKey])
 
-  const drainQueue = () => {
-    const next = queueRef.current.shift()
-    setQueue([...queueRef.current])
-    if (next) {
-      setTimeout(() => processMessageRef.current(next.text, next.serverPaths, next.displayImages, next.files), 0)
-    }
-  }
+  const updateSession = useCallback((key: string, updater: (s: SessionState) => SessionState) => {
+    setSessions(prev => {
+      const cur = prev[key] || makeSession(companyIdRef.current, key)
+      return { ...prev, [key]: updater(cur) }
+    })
+  }, [])
 
-  const processMessageRef = useRef<(text: string, serverPaths?: string[], displayImages?: string[], files?: { name: string; type: string }[]) => void>(() => {})
+  const processMessageRef = useRef<(targetKey: string, item: QueueItem) => void>(() => {})
 
-  const processMessage = useCallback((text: string, serverPaths?: string[], displayImages?: string[], files?: { name: string; type: string }[]) => {
+  const drainQueue = useCallback((targetKey: string) => {
+    const target = sessionsRef.current[targetKey]
+    if (!target || target.queue.length === 0) return
+    const [next, ...rest] = target.queue
+    updateSession(targetKey, s => ({ ...s, queue: rest }))
+    setTimeout(() => processMessageRef.current(targetKey, next), 0)
+  }, [updateSession])
+
+  const processMessage = useCallback((targetKey: string, item: QueueItem) => {
+    const { text, serverPaths, displayImages, files } = item
     let fullMessage = text
     if (serverPaths && serverPaths.length > 0) {
       const filePaths = serverPaths.filter(url => url.startsWith('/'))
@@ -130,25 +175,82 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
       }
     }
 
-    setMessages(prev => [
-      ...prev,
-      { role: 'user' as const, text, images: displayImages, files },
-      { role: 'assistant' as const, text: '', loading: true, toolCalls: [] },
-    ])
-    setStreaming(true)
-    streamingRef.current = true
-    scroll()
+    updateSession(targetKey, s => ({
+      ...s,
+      streaming: true,
+      messages: [
+        ...s.messages,
+        { role: 'user' as const, text, images: displayImages, files },
+        { role: 'assistant' as const, text: '', loading: true, toolCalls: [] },
+      ],
+    }))
+    if (targetKey === currentSessionKeyRef.current) scroll()
 
-    // Handle streaming events for this chat turn
+    sendChatWs({
+      company_id: companyIdRef.current,
+      user_id: userId,
+      message: fullMessage,
+      session_key: targetKey,
+      company_context: companyContext,
+    }).catch(err => {
+      updateSession(targetKey, s => {
+        const copy = [...s.messages]
+        const last = copy[copy.length - 1]
+        if (last?.role === 'assistant') {
+          copy[copy.length - 1] = { role: 'assistant', text: `Connection error: ${err.message}` }
+        }
+        return { ...s, messages: copy, streaming: false }
+      })
+    })
+  }, [userId, companyContext, updateSession])
+
+  processMessageRef.current = processMessage
+
+  // Single global handler — routes events by event.session_key.
+  // Registered once on mount; never overwritten so parallel sessions multiplex
+  // safely on the shared WebSocket.
+  useEffect(() => {
     protoSocket.onMessage((event: StreamEvent) => {
-      setMessages(prev => {
-        const updated = [...prev]
-        const last = updated[updated.length - 1]
-        if (last.role !== 'assistant') return updated
+      const targetKey = event.session_key
+      // Untagged error (e.g. WS close synthesizes one) → broadcast to all
+      // sessions currently streaming so each one sees the failure.
+      if (!targetKey) {
+        if (event.type === 'error') {
+          setSessions(prev => {
+            const next = { ...prev }
+            for (const [k, s] of Object.entries(prev)) {
+              if (!s.streaming) continue
+              const copy = [...s.messages]
+              const last = copy[copy.length - 1]
+              if (last?.role === 'assistant') {
+                copy[copy.length - 1] = {
+                  role: 'assistant',
+                  text: last.text || `Error: ${event.message || 'connection lost'}`,
+                  toolCalls: allDone(last.toolCalls),
+                }
+              }
+              next[k] = { ...s, messages: copy, streaming: false }
+              saveMessages(companyIdRef.current, k, copy)
+            }
+            return next
+          })
+        }
+        return
+      }
+
+      let finished = false
+      setSessions(prev => {
+        const target = prev[targetKey]
+        if (!target) return prev
+        const copy = [...target.messages]
+        const last = copy[copy.length - 1]
+        if (!last || last.role !== 'assistant') return prev
+
+        let nextStreaming = target.streaming
 
         switch (event.type) {
           case 'text':
-            updated[updated.length - 1] = {
+            copy[copy.length - 1] = {
               ...last,
               text: last.text + (event.text || ''),
               loading: false,
@@ -157,7 +259,7 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
             break
 
           case 'thinking':
-            updated[updated.length - 1] = {
+            copy[copy.length - 1] = {
               ...last,
               toolCalls: [
                 ...(last.toolCalls || []),
@@ -167,7 +269,7 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
             break
 
           case 'tool_use':
-            updated[updated.length - 1] = {
+            copy[copy.length - 1] = {
               ...last,
               toolCalls: [
                 ...allDone(last.toolCalls),
@@ -177,64 +279,43 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
             break
 
           case 'tool_result':
-            updated[updated.length - 1] = { ...last, toolCalls: allDone(last.toolCalls) }
+            copy[copy.length - 1] = { ...last, toolCalls: allDone(last.toolCalls) }
             break
 
           case 'result':
-            updated[updated.length - 1] = {
+            copy[copy.length - 1] = {
               ...last,
               text: last.text || event.text || '',
               loading: false,
               toolCalls: allDone(last.toolCalls),
             }
-            setStreaming(false)
-            streamingRef.current = false
-            onStreamComplete?.()
-            saveMessages(companyId, sessionKey, updated)
-            drainQueue()
+            nextStreaming = false
+            saveMessages(companyIdRef.current, targetKey, copy)
+            finished = true
             break
 
           case 'error':
-            updated[updated.length - 1] = {
+            copy[copy.length - 1] = {
               role: 'assistant',
               text: `Error: ${event.message}`,
               toolCalls: allDone(last.toolCalls),
             }
-            setStreaming(false)
-            streamingRef.current = false
-            onStreamComplete?.()
-            saveMessages(companyId, sessionKey, updated)
-            drainQueue()
+            nextStreaming = false
+            saveMessages(companyIdRef.current, targetKey, copy)
+            finished = true
             break
         }
 
-        scroll()
-        return updated
+        return { ...prev, [targetKey]: { ...target, messages: copy, streaming: nextStreaming } }
       })
-    })
 
-    // Send via WebSocket
-    sendChatWs({
-      company_id: companyId,
-      user_id: userId,
-      message: fullMessage,
-      session_key: sessionKey,
-      company_context: companyContext,
-    }).catch(err => {
-      setStreaming(false)
-      streamingRef.current = false
-      setMessages(prev => {
-        const copy = [...prev]
-        const last = copy[copy.length - 1]
-        if (last.role === 'assistant') {
-          copy[copy.length - 1] = { role: 'assistant', text: `Connection error: ${err.message}` }
-        }
-        return copy
-      })
+      if (targetKey === currentSessionKeyRef.current) scroll()
+      if (finished) {
+        onStreamCompleteRef.current?.()
+        drainQueue(targetKey)
+      }
     })
-  }, [companyId, userId, companyContext, onStreamComplete])
-
-  processMessageRef.current = processMessage
+  }, [drainQueue])
 
   const handleSend = useCallback(async (text: string, attachments?: Attachment[]) => {
     let serverPaths: string[] | undefined
@@ -265,27 +346,39 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
       serverPaths = paths.length > 0 ? paths : undefined
     }
 
-    if (streamingRef.current) {
-      queueRef.current.push({ text, serverPaths, displayImages, files: fileMeta })
-      setQueue([...queueRef.current])
+    const item: QueueItem = { text, serverPaths, displayImages, files: fileMeta }
+    const targetKey = sessionKey
+    const target = sessionsRef.current[targetKey]
+
+    if (target?.streaming) {
+      updateSession(targetKey, s => ({ ...s, queue: [...s.queue, item] }))
       return
     }
-    processMessage(text, serverPaths, displayImages, fileMeta)
-  }, [processMessage, companyId])
+    processMessage(targetKey, item)
+  }, [processMessage, companyId, sessionKey, updateSession])
 
   sendRef.current = handleSend
 
   function clearChat() {
-    setMessages([])
-    setStreaming(false)
-    streamingRef.current = false
-    queueRef.current = []
-    setQueue([])
-    localStorage.removeItem(storageKey(companyId, sessionKey))
-    resetSession(companyId, sessionKey)
+    const key = sessionKey
+    setSessions(prev => ({ ...prev, [key]: { messages: [], streaming: false, queue: [] } }))
+    localStorage.removeItem(storageKey(companyId, key))
+    resetSession(companyId, key)
   }
 
-  const msgCount = messages.filter(m => m.role === 'user').length
+  function cancelStreaming() {
+    const key = sessionKey
+    updateSession(key, s => {
+      const copy = [...s.messages]
+      const last = copy[copy.length - 1]
+      if (last?.role === 'assistant' && last.loading) {
+        copy[copy.length - 1] = { ...last, loading: false, text: last.text || '(cancelled)' }
+      }
+      return { ...s, messages: copy, streaming: false }
+    })
+  }
+
+  const msgCount = useMemo(() => messages.filter(m => m.role === 'user').length, [messages])
 
   function handleDragEnter(e: React.DragEvent) {
     e.preventDefault()
@@ -408,8 +501,7 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
                   <span className="flex-1 truncate">{q.text}</span>
                   <button
                     onClick={() => {
-                      queueRef.current.splice(i, 1)
-                      setQueue([...queueRef.current])
+                      updateSession(sessionKey, s => ({ ...s, queue: s.queue.filter((_, j) => j !== i) }))
                     }}
                     className="text-muted-foreground/40 hover:text-foreground shrink-0"
                     aria-label="Remove from queue"
@@ -426,18 +518,7 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
             onSend={handleSend}
             placeholder={streaming ? 'Agent working...' : 'Type a message...'}
             streaming={streaming}
-            onCancel={() => {
-              setStreaming(false)
-              streamingRef.current = false
-              setMessages(prev => {
-                const copy = [...prev]
-                const last = copy[copy.length - 1]
-                if (last?.role === 'assistant' && last.loading) {
-                  copy[copy.length - 1] = { ...last, loading: false, text: last.text || '(cancelled)' }
-                }
-                return copy
-              })
-            }}
+            onCancel={cancelStreaming}
             onRegisterAddFiles={(fn) => { addFilesRef.current = fn }}
           />
         </div>
@@ -445,4 +526,3 @@ export function ChatPanel({ companyId, userId, appName, companyContext, onStream
     </div>
   )
 }
-

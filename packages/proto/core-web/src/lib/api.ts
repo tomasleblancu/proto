@@ -9,6 +9,7 @@ export interface StreamEvent {
   content?: string
   message?: string
   session_id?: string
+  session_key?: string
   duration_ms?: number
   cost_usd?: number
   status?: string
@@ -86,11 +87,10 @@ class ProtoSocket {
         this.authenticated = false
         this.connectPromise = null
         if (this.pingTimer) { clearInterval(this.pingTimer); this.pingTimer = null }
-        // Synthesize an error event ONLY if a stream is in flight (handler set)
-        // so the chat turn can reset. Fire only once then clear.
+        // Notify the handler (untagged → broadcast to all in-flight sessions)
+        // but keep it registered so it survives reconnect.
         if (this.messageHandler) {
           try { this.messageHandler({ type: 'error', message: 'Conexion perdida. Reintenta.' }) } catch {}
-          this.messageHandler = null
         }
         // Auto-reconnect with exponential backoff (3s → 6s → 12s → ... → 60s max)
         if (!this.reconnectTimer) {
