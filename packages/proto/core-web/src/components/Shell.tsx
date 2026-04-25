@@ -3,7 +3,7 @@ import { useMountEffect } from '../hooks/useMountEffect.js'
 import { ResponsiveGridLayout } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import { XIcon, Maximize2Icon, Minimize2Icon } from 'lucide-react'
-import { loadShellState, saveShellState, clearShellState } from './shell/persistence.js'
+import { loadShellState, saveShellState, clearShellState, loadCockpitLayout, saveCockpitLayout, clearCockpitLayout } from './shell/persistence.js'
 import { Toolbar } from './shell/Toolbar.js'
 import { FocusView } from './shell/FocusView.js'
 import { EmptyState } from './shell/EmptyState.js'
@@ -158,11 +158,36 @@ export default function Shell({
     }))
   }, [])
 
+  const [cockpitLayoutOverrides, setCockpitLayoutOverrides] = useState<Record<string, GridLayouts>>({})
+
+  const currentCockpitLayouts = useMemo<GridLayouts | undefined>(() => {
+    if (!activeEntity || !activeCockpit) return undefined
+    const cached = cockpitLayoutOverrides[activeEntity.type]
+    if (cached) return cached
+    const stored = loadCockpitLayout(activeEntity.type, companyId)
+    return stored || activeCockpit.layouts
+  }, [activeEntity, activeCockpit, cockpitLayoutOverrides, companyId])
+
+  const onCockpitLayoutChange = useCallback((_: readonly LayoutItem[], all: GridLayouts) => {
+    if (!activeEntity) return
+    setCockpitLayoutOverrides(prev => ({ ...prev, [activeEntity.type]: all }))
+    saveCockpitLayout(activeEntity.type, all, companyId)
+  }, [activeEntity, companyId])
+
   const resetShell = useCallback(() => {
+    if (cockpitMode && activeEntity && activeCockpit) {
+      clearCockpitLayout(activeEntity.type, companyId)
+      setCockpitLayoutOverrides(prev => {
+        const next = { ...prev }
+        delete next[activeEntity.type]
+        return next
+      })
+      return
+    }
     clearShellState(companyId)
     setWidgets([...defaultWidgets])
     setLayouts({ ...defaultLayouts })
-  }, [defaultWidgets, defaultLayouts, companyId])
+  }, [defaultWidgets, defaultLayouts, companyId, cockpitMode, activeEntity, activeCockpit])
 
   // Persist widgets whenever the list changes
   useEffect(() => {
@@ -288,22 +313,24 @@ export default function Shell({
         />
       )}
 
-      {cockpitMode && activeCockpit && (
+      {cockpitMode && activeCockpit && activeEntity && (
         <ResponsiveGridLayout
+          key={activeEntity.type}
           className="p-2"
           width={containerWidth - 16}
           breakpoints={{ lg: 800, md: 600, sm: 0 }}
           cols={{ lg: 12, md: 8, sm: 4 }}
           rowHeight={60}
-          layouts={activeCockpit.layouts}
-          dragConfig={{ enabled: false, bounded: false }}
-          resizeConfig={{ enabled: false }}
+          layouts={currentCockpitLayouts || activeCockpit.layouts}
+          onLayoutChange={onCockpitLayoutChange}
+          dragConfig={{ enabled: true, handle: '.cockpit-drag-handle', bounded: false }}
+          resizeConfig={{ enabled: true }}
           margin={[8, 8]}
         >
           {activeCockpit.widgets.map(widget => (
             <div key={widget.id} className="bg-card border border-primary/20 rounded-lg overflow-hidden flex flex-col shadow-sm shadow-primary/5">
-              <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent">
-                <span className="text-sm font-medium text-muted-foreground">{widget.title}</span>
+              <div className="cockpit-drag-handle flex items-center justify-between px-3 py-1.5 border-b border-border/50 bg-gradient-to-r from-primary/5 to-transparent cursor-grab active:cursor-grabbing">
+                <span className="text-sm font-medium text-muted-foreground select-none">{widget.title}</span>
               </div>
               <div className="flex-1 overflow-y-auto scrollbar-thin p-2 shell-content">
                 {renderWidget(widget)}
