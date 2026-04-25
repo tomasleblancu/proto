@@ -136,9 +136,11 @@ async function handleWsChat(data: any, ws: any) {
     return
   }
 
+  const sessionKey = parsed.data.session_key
   try {
     for await (const event of streamClaude(parsed.data)) {
-      if (!safeSend(ws, JSON.stringify(event))) {
+      const tagged = sessionKey ? { ...event, session_key: sessionKey } : event
+      if (!safeSend(ws, JSON.stringify(tagged))) {
         // Client disconnected — break out so the generator can clean up
         break
       }
@@ -149,6 +151,6 @@ async function handleWsChat(data: any, ws: any) {
       }
     }
   } catch (err: any) {
-    safeSend(ws, JSON.stringify({ type: 'error', message: err.message }))
+    safeSend(ws, JSON.stringify({ type: 'error', message: err.message, session_key: sessionKey }))
   }
 }
