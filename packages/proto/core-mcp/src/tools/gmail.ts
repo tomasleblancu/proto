@@ -82,8 +82,10 @@ function getHeader(headers: any[], name: string): string {
   return headers?.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value || ''
 }
 
-export function registerGmailTools(server: McpServer) {
-  const userIdEnv = () => process.env.USER_ID || ''
+export function registerGmailTools(server: McpServer, userId?: string) {
+  // HTTP mode: userId is passed in via x-user-id header (per-request).
+  // Stdio mode: USER_ID is in process.env (set by the gateway per-subprocess).
+  const userIdEnv = () => userId || process.env.USER_ID || ''
 
   // ── gmail_status ──────────────────────────────────────────────────────
   server.tool(

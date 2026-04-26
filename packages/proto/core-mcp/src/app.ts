@@ -168,12 +168,14 @@ export async function createProtoMcp(opts: ProtoMcpOptions) {
     workflow = await loadWorkflow(workflowsDir)
   }
 
-  function buildServer(ctx?: { companyId?: string }): McpServer {
+  function buildServer(ctx?: { companyId?: string; userId?: string }): McpServer {
     const server = createMcpServer({ name: opts.name, version: opts.version })
-    const toolCtx = ctx?.companyId ? { company_id: ctx.companyId } : undefined
+    const toolCtx = (ctx?.companyId || ctx?.userId)
+      ? { company_id: ctx?.companyId, user_id: ctx?.userId }
+      : undefined
     registerUiTools(server)
     registerSchedulingTools(server)
-    registerGmailTools(server)
+    registerGmailTools(server, ctx?.userId)
     if (allTools.length > 0) registerTools(server, allTools, toolCtx)
     if (allEntities.length > 0) registerEntityTools(server, allEntities)
     if (workflow) registerWorkflowTools(server, workflow)
